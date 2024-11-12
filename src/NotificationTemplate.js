@@ -1,7 +1,18 @@
 import React from "react";
 
 const NotificationTemplate = React.forwardRef(
-  ({ severity = "low", title, reason, impact, instructions, contactUrl = "https://soporte.distrinando.com.ar" }, ref) => {
+  (
+    {
+      severity = "low",
+      title,
+      reason,
+      impact,
+      instructions,
+      customSections,
+      contactUrl = "https://soporte.distrinando.com.ar",
+    },
+    ref
+  ) => {
     const severityOptions = {
       high: {
         color: "#d32f2f",
@@ -21,9 +32,20 @@ const NotificationTemplate = React.forwardRef(
         title: "Mantenimiento Informativo",
         icon: "✅",
       },
+      announcement: {
+        color: "#0277bd",
+        backgroundColor: "#e3f2fd",
+        title: "Anuncio",
+        icon: "📢",
+      },
     };
 
-    const { color, backgroundColor, title: defaultTitle, icon } = severityOptions[severity];
+    const {
+      color,
+      backgroundColor,
+      title: defaultTitle,
+      icon,
+    } = severityOptions[severity];
 
     return (
       <div
@@ -51,60 +73,160 @@ const NotificationTemplate = React.forwardRef(
         >
           {/* Logo de la Empresa */}
           <div style={{ textAlign: "center", marginBottom: "16px" }}>
-  <img
-    src="/Distrinando3.png"
-    alt="Logo de la Empresa"
-    style={{
-      width: "250px", // Fuerza el tamaño de la imagen
-      maxWidth: "250px", // Evita que la imagen se expanda más allá de su contenedor
-      height: "auto", // Mantiene la proporción de la imagen
-    }}
-  />
-</div>
+            <img
+              src="/Distrinando3.png"
+              alt="Logo de la Empresa"
+              style={{
+                width: "250px", // Fuerza el tamaño de la imagen
+                maxWidth: "250px", // Evita que la imagen se expanda más allá de su contenedor
+                height: "auto", // Mantiene la proporción de la imagen
+              }}
+            />
+          </div>
 
           {/* Encabezado con Nivel de Urgencia */}
-          <div style={{ padding: "16px", marginBottom: "16px", backgroundColor: "#f3f4f6", borderRadius: "8px" }}>
+          <div
+            style={{
+              padding: "16px",
+              marginBottom: "16px",
+              backgroundColor: "#f3f4f6",
+              borderRadius: "8px",
+            }}
+          >
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ fontSize: "24px" }}>{icon}</span>
-              <h2 style={{ fontSize: "20px", fontWeight: "bold", color }}>{title || defaultTitle}</h2>
+              <h2 style={{ fontSize: "20px", fontWeight: "bold", color }}>
+                {title || defaultTitle}
+              </h2>
             </div>
           </div>
 
           {/* Cuerpo del Comunicado */}
           <div style={{ marginBottom: "16px" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "8px" }}>Motivo del Aviso</h3>
-            <p style={{ color: "#666", fontSize: "14px", marginBottom: "16px" }}>
+            <h3
+              style={{
+                fontSize: "16px",
+                fontWeight: "bold",
+                marginBottom: "8px",
+              }}
+            >
+              Motivo del Aviso
+            </h3>
+            <p
+              style={{ color: "#666", fontSize: "14px", marginBottom: "16px" }}
+            >
               {reason || "No se ha proporcionado un motivo específico."}
             </p>
-
-            <div style={{ backgroundColor, padding: "10px", borderRadius: "4px", marginBottom: "16px" }}>
-              <strong style={{ display: "block", fontSize: "14px", fontWeight: "bold", color }}>Impacto Potencial:</strong>
-              <p style={{ fontSize: "14px", color }}>{impact || "No se han especificado los impactos para este comunicado."}</p>
-            </div>
-
-            {/* Instrucciones Alternativas */}
-            {instructions && (
-              <>
-                <h3 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "8px" }}>Pasos Alternativos</h3>
-                <ul style={{ paddingLeft: "20px", margin: "0 0 16px 0" }}>
-                  {instructions.map((instruction, index) => (
-                    <li key={index} style={{ fontSize: "14px", color: "#333" }}>{instruction}</li>
-                  ))}
-                </ul>
-              </>
-            )}
+          </div>
+          <div
+            style={{
+              backgroundColor,
+              padding: "10px",
+              borderRadius: "4px",
+              marginBottom: "16px",
+            }}
+          >
+            <strong
+              style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: "bold",
+                color,
+              }}
+            >
+              Impacto Potencial:
+            </strong>
+            <p style={{ fontSize: "14px", color }}>
+              {impact ||
+                "No se han especificado los impactos para este comunicado."}
+            </p>
           </div>
 
-          <hr style={{ border: "none", borderTop: "1px solid #ddd", margin: "24px 0" }} />
+          {/* Instrucciones Alternativas */}
+          {instructions && instructions.length > 0 && (
+            <>
+              <h3
+                style={{
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                  marginBottom: "8px",
+                }}
+              >
+                Instrucciones:
+              </h3>
+              <div style={{ margin: "0 0 16px 0" }}>
+                {instructions.map((instruction, index) => (
+                  <p
+                    key={index}
+                    style={{
+                      color: "#666",
+                      fontSize: "14px",
+                      marginBottom: "16px",
+                    }}
+                  >
+                    {instruction}
+                  </p>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Renderizado de secciones personalizadas */}
+          {customSections.map((section, index) =>
+            section.title && section.content ? (
+              <div key={index}>
+                <h3
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: "bold",
+                    marginBottom: "8px",
+                  }}
+                >
+                  {section.title}
+                </h3>
+                <p
+                  style={{
+                    color: "#666",
+                    fontSize: "14px",
+                    marginBottom: "16px",
+                  }}
+                >
+                  {section.content}
+                </p>
+              </div>
+            ) : null
+          )}
+
+          <hr
+            style={{
+              border: "none",
+              borderTop: "1px solid #ddd",
+              margin: "24px 0",
+            }}
+          />
 
           {/* Sección Común para Problemas Persistentes */}
           <div style={{ marginBottom: "16px" }}>
-            <h3 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "8px" }}>Si el problema persiste</h3>
+            <h3
+              style={{
+                fontSize: "16px",
+                fontWeight: "bold",
+                marginBottom: "8px",
+              }}
+            >
+              Si el problema persiste
+            </h3>
             <p style={{ fontSize: "14px", color: "#666" }}>
               Por favor, contacte al equipo de Sistemas mediante un ticket en{" "}
-              <a href={contactUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#007bff" }}>
+              <a
+                href={contactUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#007bff" }}
+              >
                 {contactUrl}
-              </a>.
+              </a>
+              .
             </p>
             <a
               href={contactUrl}

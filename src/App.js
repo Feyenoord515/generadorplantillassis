@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+
 import NotificationTemplate from "./NotificationTemplate";
 
 const App = () => {
@@ -12,12 +13,28 @@ const App = () => {
     "Algunos usuarios podrían experimentar desconexiones y problemas de acceso."
   );
   const [instructions, setInstructions] = useState([
-    "Abrir 'Conexión a Escritorio Remoto' desde el menú de inicio de Windows.",
-    "Conectar usando 10.0.0.76 o 10.0.0.3, los servidores restantes.",
+    // "Abrir 'Conexión a Escritorio Remoto' desde el menú de inicio de Windows.",
+    // "Conectar usando 10.0.0.76 o 10.0.0.3, los servidores restantes.",
   ]);
 
   // Estado para manejar la visibilidad del formulario de edición
   const [isFormVisible, setIsFormVisible] = useState(true);
+  const [customSections, setCustomSections] = useState([
+    { title: "", content: "" },
+  ]);
+
+  const addCustomSection = () =>
+    setCustomSections([...customSections, { title: "", content: "" }]);
+  const removeCustomSection = (index) => {
+    setCustomSections(customSections.filter((_, i) => i !== index));
+  };
+
+  const handleCustomSectionChange = (index, field, value) => {
+    const updatedSections = customSections.map((section, i) =>
+      i === index ? { ...section, [field]: value } : section
+    );
+    setCustomSections(updatedSections);
+  };
 
   // Referencia para copiar solo la plantilla sin el formulario
   const templateRef = useRef(null);
@@ -34,7 +51,9 @@ const App = () => {
             "text/html": new Blob([htmlContent], { type: "text/html" }),
           }),
         ]);
-        alert("HTML copiado al portapapeles. Puedes pegarlo en tu cliente de correo.");
+        alert(
+          "HTML copiado al portapapeles. Puedes pegarlo en tu cliente de correo."
+        );
       } catch (err) {
         console.error("Error al copiar HTML al portapapeles:", err);
         alert("No se pudo copiar el HTML al portapapeles.");
@@ -62,7 +81,14 @@ const App = () => {
 
       {/* Formulario de edición de la plantilla */}
       {isFormVisible && (
-        <div style={{ marginBottom: "20px", background: "#f4f4f4", padding: "15px", borderRadius: "8px" }}>
+        <div
+          style={{
+            marginBottom: "20px",
+            background: "#f4f4f4",
+            padding: "15px",
+            borderRadius: "8px",
+          }}
+        >
           <label style={{ display: "block", marginBottom: "10px" }}>
             Nivel de severidad:
             <select
@@ -78,6 +104,7 @@ const App = () => {
               <option value="high">Alta</option>
               <option value="medium">Media</option>
               <option value="low">Baja</option>
+              <option value="announcement">Anuncio</option>
             </select>
           </label>
 
@@ -95,7 +122,6 @@ const App = () => {
             />
           </label>
 
-
           <label style={{ display: "block", marginBottom: "10px" }}>
             Motivo:
             <textarea
@@ -110,7 +136,7 @@ const App = () => {
             />
           </label>
 
-                   <label style={{ display: "block", marginBottom: "10px" }}>
+          <label style={{ display: "block", marginBottom: "10px" }}>
             Impacto:
             <textarea
               value={impact}
@@ -128,7 +154,14 @@ const App = () => {
             Instrucciones:
             <textarea
               value={instructions.join("\n")}
-              onChange={(e) => setInstructions(e.target.value.split("\n"))}
+              onChange={(e) => {
+                const newInstructions = e.target.value
+                  .split("\n")
+                  .filter((instruction) => instruction.trim() !== "");
+                setInstructions(
+                  newInstructions.length > 0 ? newInstructions : []
+                );
+              }}
               style={{
                 width: "100%",
                 height: "100px",
@@ -137,20 +170,43 @@ const App = () => {
               }}
             />
           </label>
+          {/* Secciones personalizadas */}
+          <h3>Secciones Personalizadas</h3>
+          {customSections.map((section, index) => (
+            <div key={index} style={{ marginBottom: "10px" }}>
+              <input
+                type="text"
+                placeholder="Título de la sección"
+                value={section.title}
+                onChange={(e) => handleCustomSectionChange(index, "title", e.target.value)}
+                style={{ width: "100%", marginBottom: "5px" }}
+              />
+              <textarea
+                placeholder="Contenido de la sección"
+                value={section.content}
+                onChange={(e) => handleCustomSectionChange(index, "content", e.target.value)}
+                style={{ width: "100%", height: "60px", marginBottom: "5px" }}
+              />
+              <button onClick={() => removeCustomSection(index)}>Eliminar Sección</button>
+            </div>
+          ))}
+          <button onClick={addCustomSection}>Agregar Sección</button>
         </div>
+
+        
       )}
 
       {/* Plantilla editable */}
       <div ref={templateRef}>
         <NotificationTemplate
-        title={title}
+          title={title}
           severity={severity}
           reason={reason}
           impact={impact}
           instructions={instructions}
+          customSections={customSections}
         />
       </div>
-
       {/* Botón para copiar el HTML */}
       <button
         onClick={copyHtmlToClipboard}
@@ -170,7 +226,6 @@ const App = () => {
 };
 
 export default App;
-
 
 // import React, { useRef } from "react";
 // import NotificationTemplate from "./NotificationTemplate";
@@ -232,5 +287,3 @@ export default App;
 // };
 
 // export default App;
-
-
