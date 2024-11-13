@@ -19,7 +19,7 @@ const App = () => {
   ]);
 
   // Estado para manejar la visibilidad del formulario de edición
-  const [isFormVisible, setIsFormVisible] = useState(true);
+  const [isFormVisible, setIsFormVisible] = useState(false);
   const [customSections, setCustomSections] = useState([
     { title: "", content: "" },
   ]);
