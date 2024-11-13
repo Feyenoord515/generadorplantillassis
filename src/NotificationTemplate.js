@@ -119,7 +119,31 @@ const NotificationTemplate = React.forwardRef(
               {reason || "No se ha proporcionado un motivo específico."}
             </p>
           </div>
-          <div
+          {impact && (
+            <div
+              style={{
+                backgroundColor,
+                padding: "10px",
+                borderRadius: "4px",
+                marginBottom: "16px",
+              }}
+            >
+              <strong
+                style={{
+                  display: "block",
+                  fontSize: "14px",
+                  fontWeight: "bold",
+                  color,
+                }}
+              >
+                Impacto Potencial:
+              </strong>
+              <p style={{ fontSize: "14px", color }}>
+                {impact}
+              </p>
+            </div>
+          )}
+          {/* <div
             style={{
               backgroundColor,
               padding: "10px",
@@ -141,7 +165,7 @@ const NotificationTemplate = React.forwardRef(
               {impact ||
                 "No se han especificado los impactos para este comunicado."}
             </p>
-          </div>
+          </div> */}
 
           {/* Instrucciones Alternativas */}
           {instructions && instructions.length > 0 && (

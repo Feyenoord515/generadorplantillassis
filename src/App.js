@@ -14,8 +14,8 @@ const App = () => {
     "Algunos usuarios podrían experimentar desconexiones y problemas de acceso."
   );
   const [instructions, setInstructions] = useState([
-    // "Abrir 'Conexión a Escritorio Remoto' desde el menú de inicio de Windows.",
-    // "Conectar usando 10.0.0.76 o 10.0.0.3, los servidores restantes.",
+    "Abrir 'Conexión a Escritorio Remoto' desde el menú de inicio de Windows.",
+    "Conectar usando 10.0.0.76 o 10.0.0.3, los servidores restantes.",
   ]);
 
   // Estado para manejar la visibilidad del formulario de edición
