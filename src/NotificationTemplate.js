@@ -10,6 +10,7 @@ const NotificationTemplate = React.forwardRef(
       instructions,
       customSections,
       contactUrl = "https://soporte.distrinando.com.ar",
+      showPersistentIssueSection,
     },
     ref
   ) => {
@@ -206,7 +207,38 @@ const NotificationTemplate = React.forwardRef(
           />
 
           {/* Sección Común para Problemas Persistentes */}
-          <div style={{ marginBottom: "16px" }}>
+          {showPersistentIssueSection && ( // RENDERIZADO CONDICIONAL
+            <div style={{ marginBottom: "16px" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: "bold", marginBottom: "8px" }}>
+                Si el problema persiste
+              </h3>
+              <p style={{ fontSize: "14px", color: "#666" }}>
+                Por favor, contacte al equipo de Sistemas mediante un ticket en{" "}
+                <a href={contactUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#007bff" }}>
+                  {contactUrl}
+                </a>
+              </p>
+              <a
+                href={contactUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-block",
+                  padding: "10px 20px",
+                  backgroundColor: "#007bff",
+                  color: "white",
+                  borderRadius: "4px",
+                  textDecoration: "none",
+                  fontWeight: "bold",
+                  textAlign: "center",
+                  marginTop: "8px",
+                }}
+              >
+                Ir a Soporte
+              </a>
+            </div>
+          )}
+          {/* <div style={{ marginBottom: "16px" }}>
             <h3
               style={{
                 fontSize: "16px",
@@ -246,7 +278,7 @@ const NotificationTemplate = React.forwardRef(
             >
               Ir a Soporte
             </a>
-          </div>
+          </div> */}
         </div>
       </div>
     );
