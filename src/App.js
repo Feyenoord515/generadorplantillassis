@@ -195,10 +195,10 @@ console.log(htmlContent)
         </div>
         {/* Botones de copia */}
         <div style={{ position: "fixed", bottom: "20px", left: "5px" }}>
-        <button onClick={copiaralclipboard} style={{ padding: "5px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", cursor: "pointer", marginRight:"2px" }}>
+        <button onClick={copiaralclipboard} style={{ padding: "5px", backgroundColor: "#6c757d", color: "white", borderRadius: "5px", cursor: "pointer", marginRight:"2px" }}>
           Copiar HTML (otra API)
         </button>
-        <button onClick={copyHtmlToClipboard} style={{ padding: "5px", backgroundColor: "#007bff", color: "white", borderRadius: "5px", cursor: "pointer" }}>
+        <button onClick={copyHtmlToClipboard} style={{ padding: "5px", backgroundColor: "#6c757d", color: "white", borderRadius: "5px", cursor: "pointer" }}>
           Copiar HTML al Portapapeles
         </button>
         </div>
