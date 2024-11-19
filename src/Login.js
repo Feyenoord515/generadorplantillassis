@@ -49,12 +49,12 @@ function Login({ onLogin }) {
           Entrar
         </button>
 
-        <p className="text-sm text-gray-500 mt-4 text-center">
+        {/* <p className="text-sm text-gray-500 mt-4 text-center">
           ¿Olvidaste tu contraseña?{' '}
           <a href="#" className="text-blue-600 hover:underline">
             Recupérala aquí
           </a>
-        </p>
+        </p> */}
         </form>
       </div>
     </div>
