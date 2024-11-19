@@ -2,15 +2,14 @@ import React, { useState, useRef } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import NotificationTemplate from "./NotificationTemplate";
-import Login from "./Login";
 import { getAccessToken, sendEmail } from "./sender";
 import { TailSpin } from "react-loader-spinner";
 import Header from "./Header";
 import Footer from "./Footer";
 
-const App = () => {
+const App = ({ onLogout }) => {
   // Estado para manejar los datos editables
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [severity, setSeverity] = useState("high");
   const [title, setTitle] = useState("Mantenimiento Urgente!");
   const [showPersistentIssueSection, setShowPersistentIssueSection] =
@@ -36,15 +35,24 @@ const App = () => {
   const [emailSubject, setEmailSubject] = useState("Comunicado desde Sistemas");
   const [isMessageSent, setIsMessageSent] = useState(false);
 const [isLoading, SetIsLoading] = useState(false);
+const [availableAddresses, setAvailableAddresses] = useState([
+  "nenrique@distrinando.com",
+  "PruebaSistemas@distrinando.com.ar",
+  "AdministracionSaladillo@distrinando.com.ar",
+]); // Lista inicial de direcciones disponibles
+const [newAddress, setNewAddress] = useState("");
 const templateRef = useRef(null);
 
 const handleLogout = () => {
+  console.log("Cerrando sesión...");
   setIsLoggedIn(false);
+  onLogout(false); // Notifica al componente raíz que el usuario salió
 };
 
 // Renderizar el Login si no está logueado
 if (!isLoggedIn) {
-  return <Login onLogin={setIsLoggedIn} />;
+  console.log("Usuario deslogueado, regresando al login.");
+  return null; // Evita renderizar si el usuario no está logueado
 }
   const addCustomSection = () =>
     setCustomSections([...customSections, { title: "", content: "" }]);
@@ -58,7 +66,26 @@ if (!isLoggedIn) {
     );
     setCustomSections(updatedSections);
   };
+  const addAddress = () => {
+    if (newAddress.trim() === "") {
+      toast.error("La dirección no puede estar vacía.", { theme: "colored" });
+      return;
+    }
+    if (availableAddresses.includes(newAddress.trim())) {
+      toast.error("La dirección ya existe en la lista.", { theme: "colored" });
+      return;
+    }
+    setAvailableAddresses([...availableAddresses, newAddress.trim()]);
+    setNewAddress("");
+    toast.success("Dirección agregada con éxito.", { theme: "colored" });
+  };
 
+  const removeAddress = (address) => {
+    setAvailableAddresses((prev) =>
+      prev.filter((item) => item !== address)
+    );
+    toast.success("Dirección eliminada con éxito.", { theme: "colored" });
+  };
   
   const enviarCorreo = async () => {
     try {
@@ -97,7 +124,7 @@ if (!isLoggedIn) {
       SetIsLoading(false);
       toast.success("Correo enviado exitosamente.", { theme: "colored" });
     } catch (error) {
-      console.error("Error al enviar el correo:", error);
+      // console.error("Error al enviar el correo:", error);
       toast.error("Hubo un problema al enviar el correo.", { theme: "colored" });
     }
   };
@@ -116,7 +143,7 @@ if (!isLoggedIn) {
       ...new Set([...prevRecipients, ...selectedRecipients]),
     ]);
 
-    console.log("Destinatarios acumulados:", recipients);
+    // console.log("Destinatarios acumulados:", recipients);
   };
   const removeRecipient = (recipientToRemove) => {
     setRecipients((prevRecipients) =>
@@ -267,15 +294,16 @@ if (!isLoggedIn) {
       <label className="block mb-4">
         Destinatarios:
         <select
-          multiple
-          onChange={handleRecipientChange}
-          className="w-full mt-2 p-2 rounded bg-gray-700 border border-gray-600 focus:ring focus:ring-blue-600"
-        >
-          <option value="nenrique@distrinando.com">nenrique@distrinando.com</option>
-          <option value="PruebaSistemas@distrinando.com.ar">PruebaSistemas@distrinando.com.ar</option>
-          <option value="n.enriquemolinari@gmail.com">n.enriquemolinari@gmail.com</option>
-          <option value="AdministracionSaladillo@distrinando.com.ar">AdministracionSaladillo@distrinando.com.ar</option>
-        </select>
+            multiple
+            onChange={handleRecipientChange}
+            className="w-full mt-2 p-2 rounded bg-gray-700 border border-gray-600 focus:ring focus:ring-blue-600"
+          >
+            {availableAddresses.map((address, index) => (
+              <option key={index} value={address}>
+                {address}
+              </option>
+            ))}
+          </select>
       </label>
 
       <label className="block mb-4">
@@ -297,6 +325,44 @@ if (!isLoggedIn) {
                   {recipient}
                   <button
                     onClick={() => removeRecipient(recipient)}
+                    className="ml-2 text-white bg-red-600 rounded-full p-1 flex justify-center items-center w-5 h-5"
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+         {/* Agregar nueva dirección */}
+         <label className="block mt-4">
+          Agregar nueva dirección:
+          <div className="flex mt-2">
+            <input
+              type="email"
+              value={newAddress}
+              onChange={(e) => setNewAddress(e.target.value)}
+              placeholder="example@domain.com"
+              className="flex-grow p-2 rounded bg-gray-700 border border-gray-600 focus:ring focus:ring-blue-600"
+            />
+            <button
+              onClick={addAddress}
+              className="ml-2 px-4 py-2 bg-green-600 rounded hover:bg-green-700"
+            >
+              +
+            </button>
+          </div>
+        </label>
+        {/* Lista de direcciones disponibles con opción para eliminar */}
+        {availableAddresses.length > 0 && (
+          <div className="mt-4">
+            <h4 className="font-bold">Direcciones disponibles:</h4>
+            <ul>
+              {availableAddresses.map((address, index) => (
+                <li key={index} className="flex items-center mt-2">
+                  {address}
+                  <button
+                    onClick={() => removeAddress(address)}
                     className="ml-2 text-white bg-red-600 rounded-full p-1 flex justify-center items-center w-5 h-5"
                   >
                     ×

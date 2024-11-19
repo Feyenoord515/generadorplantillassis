@@ -28,7 +28,7 @@ export async function getAccessToken() {
     myHeader.append("Prefer", "outlook.allow-unsafe-html");
     myHeader.append("Authorization", `Bearer ${tkn}`);
     const raw = JSON.stringify(obj);
-  console.log(raw)
+ 
     const requestOptions = {
       method: "POST",
       headers: myHeader,
@@ -37,11 +37,11 @@ export async function getAccessToken() {
     };
   
     try {
-        console.log(requestOptions.headers);
-        console.log(requestOptions.body);
+        // console.log(requestOptions.headers);
+        // console.log(requestOptions.body);
       const response = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", requestOptions);
       const result = await response.text();
-      console.log("respuesta envio", result);
+      console.log("respuesta envio",result);
       // alert("Correo enviado exitosamente.");
     } catch (error) {
       console.log("Error al enviar el correo:", error);

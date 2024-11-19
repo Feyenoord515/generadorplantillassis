@@ -7,13 +7,16 @@ function Login({ onLogin }) {
   const [password, setPassword] = useState('');
 
   const handleLogin = (event) => {
-    event.preventDefault(); // Evita el comportamiento por defecto del formulario
+    event.preventDefault(); // Primero evitamos el comportamiento por defecto
+   
+  
     if (username === 'admin' && password === '1234') {
-      onLogin(true);
+     
+      onLogin(true); // Notifica al componente padre
     } else {
       toast.error('Credenciales incorrectas', {
         position: "top-right",
-        autoClose: 3000, // Cierra automáticamente después de 3 segundos
+        autoClose: 3000,
         hideProgressBar: false,
         closeOnClick: true,
         pauseOnHover: true,

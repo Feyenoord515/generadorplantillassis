@@ -9,12 +9,19 @@ const RootComponent = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const handleLogin = (status) => {
+    
     setIsAuthenticated(status);
   };
 
+ 
+
   return (
     <React.StrictMode>
-      {isAuthenticated ? <App /> : <Login onLogin={handleLogin} />}
+      {isAuthenticated ? (
+        <App onLogout={() => setIsAuthenticated(false)} />
+      ) : (
+        <Login onLogin={handleLogin} />
+      )}
     </React.StrictMode>
   );
 };
