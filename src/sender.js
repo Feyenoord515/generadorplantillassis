@@ -42,7 +42,7 @@ export async function getAccessToken() {
       const response = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", requestOptions);
       const result = await response.text();
       console.log("respuesta envio", result);
-      alert("Correo enviado exitosamente.");
+      // alert("Correo enviado exitosamente.");
     } catch (error) {
       console.log("Error al enviar el correo:", error);
     }

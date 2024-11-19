@@ -1,11 +1,12 @@
 import React, { useState, useRef } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import NotificationTemplate from "./NotificationTemplate";
-import Login from './Login';
-import { getAccessToken, sendEmail} from "./sender";
-// import * as clipboard from "clipboard-polyfill";
+import Login from "./Login";
+import { getAccessToken, sendEmail } from "./sender";
 import { TailSpin } from "react-loader-spinner";
-import Header from './Header';
-import Footer from './Footer';
+import Header from "./Header";
+import Footer from "./Footer";
 
 const App = () => {
   // Estado para manejar los datos editables
@@ -58,48 +59,7 @@ if (!isLoggedIn) {
     setCustomSections(updatedSections);
   };
 
-  // Referencia para copiar solo la plantilla sin el formulario
-  // const copiaralclipboard = async () => {
-  //   if (templateRef.current) {
-  //     const htmlContent = templateRef.current.innerHTML;
-  //     console.log(htmlContent);
-
-  //     try {
-  //       const item = new clipboard.ClipboardItem({
-  //         "text/html": new Blob([htmlContent], { type: "text/html" }),
-  //       });
-  //       await clipboard.write([item]);
-  //       alert(
-  //         "HTML copiado al portapapeles. Puedes pegarlo en tu cliente de correo."
-  //       );
-  //     } catch (err) {
-  //       console.error("Error al copiar HTML al portapapeles:", err);
-  //       alert("No se pudo copiar el HTML al portapapeles.");
-  //     }
-  //   }
-  // };
-
-  // const copyHtmlToClipboard = async () => {
-  //   if (templateRef.current) {
-  //     // Obtén el HTML del componente, pero excluyendo el formulario de edición
-  //     const htmlContent = templateRef.current.innerHTML;
-  //     console.log(htmlContent);
-  //     // Usa la API de Clipboard con MIME tipo `text/html`
-  //     try {
-  //       await navigator.clipboard.write([
-  //         new ClipboardItem({
-  //           "text/html": new Blob([htmlContent], { type: "text/html" }),
-  //         }),
-  //       ]);
-  //       alert(
-  //         "HTML copiado al portapapeles. Puedes pegarlo en tu cliente de correo."
-  //       );
-  //     } catch (err) {
-  //       console.error("Error al copiar HTML al portapapeles:", err);
-  //       alert("No se pudo copiar el HTML al portapapeles.");
-  //     }
-  //   }
-  // };
+  
   const enviarCorreo = async () => {
     try {
       SetIsLoading(true);
@@ -109,7 +69,7 @@ if (!isLoggedIn) {
      
       if (!token) {
         SetIsLoading(false);
-        alert("No se pudo obtener el token de autenticación.");
+        toast.error("No se pudo obtener el token de autenticación.", { theme: "colored" });
         return;
       }
       // const contacts = await obtenerContactos(token)
@@ -135,10 +95,10 @@ if (!isLoggedIn) {
       await sendEmail(emailObj, token);
       setIsMessageSent(true);
       SetIsLoading(false);
-      alert("Correo enviado exitosamente.");
+      toast.success("Correo enviado exitosamente.", { theme: "colored" });
     } catch (error) {
       console.error("Error al enviar el correo:", error);
-      alert("Hubo un problema al enviar el correo.");
+      toast.error("Hubo un problema al enviar el correo.", { theme: "colored" });
     }
   };
   const handleRecipientChange = (event) => {
@@ -394,11 +354,55 @@ if (!isLoggedIn) {
        
       </div>
       <Footer text="© 2024 Distrinando sistemas" />
+      <ToastContainer />
     </div>
   );
 };
 
 export default App;
+
+// Referencia para copiar solo la plantilla sin el formulario
+  // const copiaralclipboard = async () => {
+  //   if (templateRef.current) {
+  //     const htmlContent = templateRef.current.innerHTML;
+  //     console.log(htmlContent);
+
+  //     try {
+  //       const item = new clipboard.ClipboardItem({
+  //         "text/html": new Blob([htmlContent], { type: "text/html" }),
+  //       });
+  //       await clipboard.write([item]);
+  //       alert(
+  //         "HTML copiado al portapapeles. Puedes pegarlo en tu cliente de correo."
+  //       );
+  //     } catch (err) {
+  //       console.error("Error al copiar HTML al portapapeles:", err);
+  //       alert("No se pudo copiar el HTML al portapapeles.");
+  //     }
+  //   }
+  // };
+
+  // const copyHtmlToClipboard = async () => {
+  //   if (templateRef.current) {
+  //     // Obtén el HTML del componente, pero excluyendo el formulario de edición
+  //     const htmlContent = templateRef.current.innerHTML;
+  //     console.log(htmlContent);
+  //     // Usa la API de Clipboard con MIME tipo `text/html`
+  //     try {
+  //       await navigator.clipboard.write([
+  //         new ClipboardItem({
+  //           "text/html": new Blob([htmlContent], { type: "text/html" }),
+  //         }),
+  //       ]);
+  //       alert(
+  //         "HTML copiado al portapapeles. Puedes pegarlo en tu cliente de correo."
+  //       );
+  //     } catch (err) {
+  //       console.error("Error al copiar HTML al portapapeles:", err);
+  //       alert("No se pudo copiar el HTML al portapapeles.");
+  //     }
+  //   }
+  // };
 //   return (
 //     <div style={{ display: "flex", padding: "20px" }}>
 //       {/* Botón para desplegar u ocultar el formulario de edición */}
