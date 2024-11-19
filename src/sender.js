@@ -26,7 +26,7 @@ export async function getAccessToken() {
     const myHeader = new Headers();
     myHeader.append("Content-Type", "application/json");
     myHeader.append("Prefer", "outlook.allow-unsafe-html");
-    myHeader.append("Authorization", "Bearer " + `${tkn}`);
+    myHeader.append("Authorization", `Bearer ${tkn}`);
     const raw = JSON.stringify(obj);
   console.log(raw)
     const requestOptions = {
