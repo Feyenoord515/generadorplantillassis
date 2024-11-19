@@ -10,7 +10,7 @@ function Login({ onLogin }) {
     event.preventDefault(); // Primero evitamos el comportamiento por defecto
    
   
-    if (username === 'admin' && password === '1234') {
+    if (username === 'admin' && password === 'a2?hw1^qU]0N') {
      
       onLogin(true); // Notifica al componente padre
     } else {

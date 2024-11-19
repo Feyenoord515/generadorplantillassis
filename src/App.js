@@ -1,4 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { collection, addDoc, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { db } from "./firebaseConfig";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import NotificationTemplate from "./NotificationTemplate";
@@ -36,12 +38,32 @@ const App = ({ onLogout }) => {
   const [isMessageSent, setIsMessageSent] = useState(false);
 const [isLoading, SetIsLoading] = useState(false);
 const [availableAddresses, setAvailableAddresses] = useState([
-  "nenrique@distrinando.com",
-  "PruebaSistemas@distrinando.com.ar",
-  "AdministracionSaladillo@distrinando.com.ar",
+ 
 ]); // Lista inicial de direcciones disponibles
+const [isAddAddressVisible, setIsAddAddressVisible] = useState(false);
 const [newAddress, setNewAddress] = useState("");
 const templateRef = useRef(null);
+
+useEffect(() => {
+  const fetchRecipients = async () => {
+    const querySnapshot = await getDocs(collection(db, "recipients"));
+    const addresses = querySnapshot.docs.map((doc) => doc.data().address);
+    
+    // Combina las direcciones predeterminadas con las obtenidas de Firebase, evitando duplicados
+    const allAddresses = [
+      ...new Set([
+        ...availableAddresses,  // Direcciones predeterminadas
+        ...addresses,            // Direcciones obtenidas de Firestore
+      ]),
+    ];
+    
+    // Actualiza el estado con las direcciones combinadas
+    setAvailableAddresses(allAddresses);
+  };
+
+  fetchRecipients();
+}, [availableAddresses]); 
+
 
 const handleLogout = () => {
   console.log("Cerrando sesión...");
@@ -66,25 +88,33 @@ if (!isLoggedIn) {
     );
     setCustomSections(updatedSections);
   };
-  const addAddress = () => {
+  const addAddress = async () => {
     if (newAddress.trim() === "") {
-      toast.error("La dirección no puede estar vacía.", { theme: "colored" });
+      toast.error("La dirección no puede estar vacía.");
       return;
     }
-    if (availableAddresses.includes(newAddress.trim())) {
-      toast.error("La dirección ya existe en la lista.", { theme: "colored" });
-      return;
+
+    try {
+       await addDoc(collection(db, "recipients"), {
+        address: newAddress.trim(),
+      });
+      setRecipients([...recipients, newAddress.trim()]);
+      setNewAddress("");
+      toast.success("Dirección agregada con éxito.");
+    } catch (e) {
+      console.error("Error añadiendo documento: ", e);
     }
-    setAvailableAddresses([...availableAddresses, newAddress.trim()]);
-    setNewAddress("");
-    toast.success("Dirección agregada con éxito.", { theme: "colored" });
   };
 
-  const removeAddress = (address) => {
-    setAvailableAddresses((prev) =>
-      prev.filter((item) => item !== address)
-    );
-    toast.success("Dirección eliminada con éxito.", { theme: "colored" });
+  // Eliminar dirección de Firestore
+  const removeAddress = async (address) => {
+    const addressRef = await getDocs(collection(db, "recipients"));
+    const addressDoc = addressRef.docs.find((doc) => doc.data().address === address);
+    if (addressDoc) {
+      await deleteDoc(doc(db, "recipients", addressDoc.id));
+      setRecipients(recipients.filter((rec) => rec !== address));
+      toast.success("Dirección eliminada.");
+    }
   };
   
   const enviarCorreo = async () => {
@@ -334,44 +364,56 @@ if (!isLoggedIn) {
             </ul>
           </div>
         )}
+
+<button
+          onClick={() => setIsAddAddressVisible(!isAddAddressVisible)}
+          className="mt-4 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 w-full"
+        >
+          {isAddAddressVisible ? 'Ocultar sección dirección de mail' : 'Agregar/editar dirección de mail:'}
+        </button>
          {/* Agregar nueva dirección */}
-         <label className="block mt-4">
-          Agregar nueva dirección:
-          <div className="flex mt-2">
-            <input
-              type="email"
-              value={newAddress}
-              onChange={(e) => setNewAddress(e.target.value)}
-              placeholder="example@domain.com"
-              className="flex-grow p-2 rounded bg-gray-700 border border-gray-600 focus:ring focus:ring-blue-600"
-            />
-            <button
-              onClick={addAddress}
-              className="ml-2 px-4 py-2 bg-green-600 rounded hover:bg-green-700"
-            >
-              +
-            </button>
-          </div>
-        </label>
-        {/* Lista de direcciones disponibles con opción para eliminar */}
-        {availableAddresses.length > 0 && (
-          <div className="mt-4">
-            <h4 className="font-bold">Direcciones disponibles:</h4>
-            <ul>
-              {availableAddresses.map((address, index) => (
-                <li key={index} className="flex items-center mt-2">
-                  {address}
-                  <button
-                    onClick={() => removeAddress(address)}
-                    className="ml-2 text-white bg-red-600 rounded-full p-1 flex justify-center items-center w-5 h-5"
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+         {isAddAddressVisible && (
+  <div className="mt-4">
+    {/* Agregar nueva dirección */}
+    <label className="block">
+      <div className="flex mt-2">
+        <input
+          type="email"
+          value={newAddress}
+          onChange={(e) => setNewAddress(e.target.value)}
+          placeholder="example@domain.com"
+          className="flex-grow p-2 rounded bg-gray-700 border border-gray-600 focus:ring focus:ring-blue-600"
+        />
+        <button
+          onClick={addAddress}
+          className="ml-2 px-4 py-2 bg-green-600 rounded hover:bg-green-700"
+        >
+          +
+        </button>
+      </div>
+    </label>
+
+    {/* Lista de direcciones disponibles */}
+    {availableAddresses.length > 0 && (
+      <div className="mt-4">
+        <h4 className="font-bold">Direcciones disponibles:</h4>
+        <ul>
+          {availableAddresses.map((address, index) => (
+            <li key={index} className="flex items-center mt-2">
+              {address}
+              <button
+                onClick={() => removeAddress(address)}
+                className="ml-2 text-white bg-red-600 rounded-full p-1 flex justify-center items-center w-5 h-5"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+  </div>
+)}
         {isLoading && <TailSpin visible={true} height="60" width="60" color="#4fa94d" ariaLabel="tail-spin-loading" />}
         {isMessageSent && <p className="text-green-500 font-semibold mt-2">Mensaje enviado exitosamente.</p>}
         {/* Botón para enviar comunicado */}
