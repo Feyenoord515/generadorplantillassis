@@ -48,28 +48,28 @@ export async function getAccessToken() {
     }
   }
 
-  export async function obtenerContactos(tkn) {
-    const myHeader = new Headers();
-    myHeader.append("Content-Type", "application/json");
-    myHeader.append("Prefer", "outlook.allow-unsafe-html");
-    myHeader.append("Authorization", "Bearer " + `${tkn}`);
+  // export async function obtenerContactos(tkn) {
+  //   const myHeader = new Headers();
+  //   myHeader.append("Content-Type", "application/json");
+  //   myHeader.append("Prefer", "outlook.allow-unsafe-html");
+  //   myHeader.append("Authorization", "Bearer " + `${tkn}`);
     
   
-    const requestOptions = {
-      method: "GET",
-      headers: myHeader,
-      redirect: "follow",
-    };
+  //   const requestOptions = {
+  //     method: "GET",
+  //     headers: myHeader,
+  //     redirect: "follow",
+  //   };
   
-    try {
+  //   try {
      
-      const response = await fetch("https://graph.microsoft.com/v1.0/me/people", requestOptions);
-      console.log(response)
-      const result = await response.text();
-      console.log("respuesta get contactos", result);
-      alert("contactos obtenidos.");
-    } catch (error) {
-      console.log("Error EN GET CONTACTOS:", error);
-    }
-  }
+  //     const response = await fetch("https://graph.microsoft.com/v1.0/me/people", requestOptions);
+  //     console.log(response)
+  //     const result = await response.text();
+  //     console.log("respuesta get contactos", result);
+  //     alert("contactos obtenidos.");
+  //   } catch (error) {
+  //     console.log("Error EN GET CONTACTOS:", error);
+  //   }
+  // }
   

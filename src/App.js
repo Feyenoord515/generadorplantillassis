@@ -1,8 +1,8 @@
 import React, { useState, useRef } from "react";
 import NotificationTemplate from "./NotificationTemplate";
 import Login from './Login';
-import { getAccessToken, sendEmail, obtenerContactos } from "./sender";
-import * as clipboard from "clipboard-polyfill";
+import { getAccessToken, sendEmail} from "./sender";
+// import * as clipboard from "clipboard-polyfill";
 import { TailSpin } from "react-loader-spinner";
 import Header from './Header';
 import Footer from './Footer';
@@ -59,47 +59,47 @@ if (!isLoggedIn) {
   };
 
   // Referencia para copiar solo la plantilla sin el formulario
-  const copiaralclipboard = async () => {
-    if (templateRef.current) {
-      const htmlContent = templateRef.current.innerHTML;
-      console.log(htmlContent);
+  // const copiaralclipboard = async () => {
+  //   if (templateRef.current) {
+  //     const htmlContent = templateRef.current.innerHTML;
+  //     console.log(htmlContent);
 
-      try {
-        const item = new clipboard.ClipboardItem({
-          "text/html": new Blob([htmlContent], { type: "text/html" }),
-        });
-        await clipboard.write([item]);
-        alert(
-          "HTML copiado al portapapeles. Puedes pegarlo en tu cliente de correo."
-        );
-      } catch (err) {
-        console.error("Error al copiar HTML al portapapeles:", err);
-        alert("No se pudo copiar el HTML al portapapeles.");
-      }
-    }
-  };
+  //     try {
+  //       const item = new clipboard.ClipboardItem({
+  //         "text/html": new Blob([htmlContent], { type: "text/html" }),
+  //       });
+  //       await clipboard.write([item]);
+  //       alert(
+  //         "HTML copiado al portapapeles. Puedes pegarlo en tu cliente de correo."
+  //       );
+  //     } catch (err) {
+  //       console.error("Error al copiar HTML al portapapeles:", err);
+  //       alert("No se pudo copiar el HTML al portapapeles.");
+  //     }
+  //   }
+  // };
 
-  const copyHtmlToClipboard = async () => {
-    if (templateRef.current) {
-      // Obtén el HTML del componente, pero excluyendo el formulario de edición
-      const htmlContent = templateRef.current.innerHTML;
-      console.log(htmlContent);
-      // Usa la API de Clipboard con MIME tipo `text/html`
-      try {
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            "text/html": new Blob([htmlContent], { type: "text/html" }),
-          }),
-        ]);
-        alert(
-          "HTML copiado al portapapeles. Puedes pegarlo en tu cliente de correo."
-        );
-      } catch (err) {
-        console.error("Error al copiar HTML al portapapeles:", err);
-        alert("No se pudo copiar el HTML al portapapeles.");
-      }
-    }
-  };
+  // const copyHtmlToClipboard = async () => {
+  //   if (templateRef.current) {
+  //     // Obtén el HTML del componente, pero excluyendo el formulario de edición
+  //     const htmlContent = templateRef.current.innerHTML;
+  //     console.log(htmlContent);
+  //     // Usa la API de Clipboard con MIME tipo `text/html`
+  //     try {
+  //       await navigator.clipboard.write([
+  //         new ClipboardItem({
+  //           "text/html": new Blob([htmlContent], { type: "text/html" }),
+  //         }),
+  //       ]);
+  //       alert(
+  //         "HTML copiado al portapapeles. Puedes pegarlo en tu cliente de correo."
+  //       );
+  //     } catch (err) {
+  //       console.error("Error al copiar HTML al portapapeles:", err);
+  //       alert("No se pudo copiar el HTML al portapapeles.");
+  //     }
+  //   }
+  // };
   const enviarCorreo = async () => {
     try {
       SetIsLoading(true);
