@@ -4,10 +4,10 @@ import 'react-toastify/dist/ReactToastify.css';
 
 const userCredentials = {
   admin: 'a2?hw1^qU]0N',
-  Mauricio: '1234',
-  Matias: '1234',
-  Octavio: '1234',
-  Guillermo: '1234',
+  Mauricio: 'M8&vQ3!rT5@z',
+  Matias: 'P4#xW7^kL2*e',
+  Octavio: 'O9!bR6&yN1@u',
+  Guillermo: 'G3^tZ8#pF4!m',
 };
 
 function Login({ onLogin }) {
