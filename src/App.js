@@ -177,14 +177,32 @@ const App = ({ onLogout, currentUser }) => {
 
   // Eliminar dirección de Firestore
   const removeAddress = async (address) => {
-    const addressRef = await getDocs(collection(db, "recipients"));
-    const addressDoc = addressRef.docs.find(
-      (doc) => doc.data().address === address
-    );
-    if (addressDoc) {
-      await deleteDoc(doc(db, "recipients", addressDoc.id));
-      setRecipients(recipients.filter((rec) => rec !== address));
-      toast.success("Dirección eliminada.");
+    try {
+      // Buscar el documento correspondiente a la dirección en Firestore
+      const addressRef = await getDocs(collection(db, "recipients"));
+      const addressDoc = addressRef.docs.find(
+        (doc) => doc.data().address === address
+      );
+  
+      if (addressDoc) {
+        // Eliminar el documento en Firestore
+        await deleteDoc(doc(db, "recipients", addressDoc.id));
+  
+        // Actualizar los estados locales
+        setAvailableAddresses((prev) =>
+          prev.filter((availableAddress) => availableAddress !== address)
+        );
+        setRecipients((prev) =>
+          prev.filter((recipient) => recipient !== address)
+        );
+  
+        toast.success("Dirección eliminada correctamente.");
+      } else {
+        toast.error("No se encontró la dirección en la base de datos.");
+      }
+    } catch (error) {
+      console.error("Error al eliminar dirección:", error);
+      toast.error("Hubo un problema al eliminar la dirección.");
     }
   };
 
