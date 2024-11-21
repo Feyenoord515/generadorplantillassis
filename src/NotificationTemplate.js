@@ -59,6 +59,7 @@ const NotificationTemplate = React.forwardRef(
           padding: "16px",
           fontFamily: "Arial, sans-serif",
           backgroundColor: "#f9f9f9", // Fondo para toda la página
+          borderRadius: "8px",
         }}
       >
         {/* Contenedor Principal */}
@@ -83,7 +84,7 @@ const NotificationTemplate = React.forwardRef(
               src={img64}
               alt="Logo de la Empresa"
               style={{
-                width: "250px", // Fuerza el tamaño de la imagen
+                width: "100%", // Fuerza el tamaño de la imagen
                 maxWidth: "250px", // Evita que la imagen se expanda más allá de su contenedor
                 height: "auto", // Mantiene la proporción de la imagen
                 display: "block", // Asegura que no quede espacio extra si se coloca en algún cliente de correo

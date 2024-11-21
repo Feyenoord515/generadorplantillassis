@@ -7,18 +7,23 @@ import reportWebVitals from './reportWebVitals';
 
 const RootComponent = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
-  const handleLogin = (status) => {
-    
+  const handleLogin = (status, username) => {
     setIsAuthenticated(status);
+    setCurrentUser(username); // Guardar el nombre del usuario autenticado
   };
-
- 
 
   return (
     <React.StrictMode>
       {isAuthenticated ? (
-        <App onLogout={() => setIsAuthenticated(false)} />
+        <App
+          currentUser={currentUser}
+          onLogout={() => {
+            setIsAuthenticated(false);
+            setCurrentUser(null);
+          }}
+        />
       ) : (
         <Login onLogin={handleLogin} />
       )}
