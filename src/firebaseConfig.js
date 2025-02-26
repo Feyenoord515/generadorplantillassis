@@ -1,13 +1,15 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
+
+
 const firebaseConfig = {
-    apiKey: "AIzaSyDCYdz86js-hid-lhkjhSTQPLstF9vrNxs",
-    authDomain: "database-emails-distry.firebaseapp.com",
-    projectId: "database-emails-distry",
-    storageBucket: "database-emails-distry.firebasestorage.app",
-    messagingSenderId: "148101364398",
-    appId: "1:148101364398:web:96fdd3a8468537a0fccb3f"
+    apiKey: process.env.REACT_APP_APIKEY,
+    authDomain: process.env.REACT_APP_AUTHDOMAIN,
+    projectId: process.env.REACT_APP_PROJECTID,
+    storageBucket: process.env.REACT_APP_STORAGEBUCKET,
+    messagingSenderId: process.env.REACT_APP_MESSAGINGSENDERID,
+    appId: process.env.REACT_APP_APPID
 };
 
 const app = initializeApp(firebaseConfig);
