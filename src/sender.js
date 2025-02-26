@@ -5,7 +5,7 @@ export async function getAccessToken() {
     };
   
     try {
-      const response = await fetch("https://us-central1-listener-token.cloudfunctions.net/getTokenOutlook", requestOptions);
+      const response = await fetch(process.env.REACT_APP_ENDPOINTTOKEN, requestOptions);
   
       if (!response.ok) throw new Error("Error al obtener el token");
   
@@ -39,7 +39,7 @@ export async function getAccessToken() {
     try {
         // console.log(requestOptions.headers);
         // console.log(requestOptions.body);
-      const response = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", requestOptions);
+      const response = await fetch(process.env.REACT_APP_ENDPOINTSENDER, requestOptions);
       const result = await response.text();
       console.log("respuesta envio",result);
       // alert("Correo enviado exitosamente.");
