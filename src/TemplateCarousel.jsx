@@ -5,7 +5,13 @@ import "slick-carousel/slick/slick-theme.css";
 import NotificationTemplate from "./NotificationTemplate";
 import './index.css';
 
-const TemplateCarousel = ({ templates, onTemplateSelect, onDelete }) => {
+const TemplateCarousel = ({
+  templates,
+  onTemplateSelect,
+  onDelete,
+  theme = "dark",
+}) => {
+  const isDark = theme === "dark";
   // Determinamos cuántos slides mostrar según el número de plantillas
   const slidesToShow = templates.length < 3 ? templates.length : 4;
   
@@ -62,7 +68,11 @@ const TemplateCarousel = ({ templates, onTemplateSelect, onDelete }) => {
 
   return (
     <div className="mt-5 w-full h-auto max-w-screen-2xl px-14 xs:p-0 sm:px-0 md:px-8 lg:px-10  mb-1 ">
-      <h3 className="text-center mb-4 text-lg font-semibold text-gray-800">
+      <h3
+        className={`text-center mb-4 text-lg font-semibold ${
+          isDark ? "text-slate-100" : "text-[#102F45]"
+        }`}
+      >
         Plantillas Guardadas
       </h3>
       <div className="h-full">
@@ -89,9 +99,13 @@ const TemplateCarousel = ({ templates, onTemplateSelect, onDelete }) => {
               />
               {/* Botón para eliminar la plantilla */}
               <button
-                onClick={() => onDelete(template.id)}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(template.id);
+                }}
                 className="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
-                >
+              >
                 Eliminar Plantilla
               </button>
                   </div>

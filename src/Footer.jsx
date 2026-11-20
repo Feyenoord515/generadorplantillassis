@@ -1,10 +1,20 @@
-// Footer.js
-import React from 'react';
+import React from "react";
 
-function Footer({ text }) {
+function Footer({ text, theme = "dark" }) {
+  const isDark = theme === "dark";
+
   return (
-    <footer className="bg-gradient-to-r from-gray-500 to-blue-300 text-white py-2 shadow-inner w-auto rounded-lg justify-center mb-0">
-      <p className="text-center text-md my-4">{text}</p>
+    <footer
+      className={`border-t transition-colors ${
+        isDark
+          ? "bg-slate-950 border-slate-800 text-slate-400"
+          : "bg-white border-slate-200 text-[#536F83]"
+      }`}
+    >
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs sm:text-sm">
+        <p>{text}</p>
+        <p className="opacity-80">Distrinando S.A. · Comunicaciones Internas</p>
+      </div>
     </footer>
   );
 }

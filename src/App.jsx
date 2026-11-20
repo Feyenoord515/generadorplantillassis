@@ -13,12 +13,13 @@ import "react-toastify/dist/ReactToastify.css";
 import NotificationTemplate from "./NotificationTemplate";
 import TemplateCarousel from "./TemplateCarousel";
 import { getAccessToken, sendEmail } from "./sender";
-import { TailSpin } from "react-loader-spinner";
+import BrandLogo from "./components/BrandLogo";
 
 import Header from "./Header";
 import Footer from "./Footer";
 
-const App = ({ onLogout, currentUser }) => {
+const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
+  const isDark = theme === "dark";
   // Estado para manejar los datos editables
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [severity, setSeverity] = useState("high");
@@ -55,32 +56,35 @@ const App = ({ onLogout, currentUser }) => {
 
   useEffect(() => {
     const fetchRecipients = async () => {
-      const querySnapshot = await getDocs(collection(db, "recipients"));
-      const addresses = querySnapshot.docs.map((doc) => doc.data().address);
+      try {
+        const querySnapshot = await getDocs(collection(db, "recipients"));
+        const addresses = querySnapshot.docs.map((doc) => doc.data().address);
 
-      // Combina las direcciones predeterminadas con las obtenidas de Firebase, evitando duplicados
-      const allAddresses = [
-        ...new Set([
-          ...availableAddresses, // Direcciones predeterminadas
-          ...addresses, // Direcciones obtenidas de Firestore
-        ]),
-      ];
-
-      // Actualiza el estado con las direcciones combinadas
-      setAvailableAddresses(allAddresses);
+        setAvailableAddresses((prev) => [...new Set([...prev, ...addresses])]);
+      } catch (error) {
+        console.error("Error al obtener destinatarios:", error);
+        toast.error("No se pudieron cargar los destinatarios.");
+      }
     };
 
     fetchRecipients();
-  }, [availableAddresses]);
+  }, []);
 
   useEffect(() => {
     const fetchTemplates = async () => {
-      const querySnapshot = await getDocs(collection(db, templatesCollection));
-      const userTemplates = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setTemplates(userTemplates);
+      try {
+        const querySnapshot = await getDocs(
+          collection(db, templatesCollection)
+        );
+        const userTemplates = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setTemplates(userTemplates);
+      } catch (error) {
+        console.error("Error al obtener plantillas:", error);
+        toast.error("No se pudieron cargar las plantillas guardadas.");
+      }
     };
 
     fetchTemplates();
@@ -102,8 +106,14 @@ const App = ({ onLogout, currentUser }) => {
     };
 
     try {
-      await addDoc(collection(db, templatesCollection), templateData);
-      setTemplates((prevTemplates) => [...prevTemplates, templateData]);
+      const docRef = await addDoc(
+        collection(db, templatesCollection),
+        templateData
+      );
+      setTemplates((prevTemplates) => [
+        ...prevTemplates,
+        { id: docRef.id, ...templateData },
+      ]);
       toast.success("Plantilla guardada con éxito!");
     } catch (e) {
       console.error("Error guardando plantilla: ", e);
@@ -158,20 +168,23 @@ const App = ({ onLogout, currentUser }) => {
     setCustomSections(updatedSections);
   };
   const addAddress = async () => {
-    if (newAddress.trim() === "") {
+    const trimmed = newAddress.trim();
+    if (trimmed === "") {
       toast.error("La dirección no puede estar vacía.");
       return;
     }
 
     try {
       await addDoc(collection(db, "recipients"), {
-        address: newAddress.trim(),
+        address: trimmed,
       });
-      setRecipients([...recipients, newAddress.trim()]);
+      setAvailableAddresses((prev) => [...new Set([...prev, trimmed])]);
+      setRecipients((prev) => [...new Set([...prev, trimmed])]);
       setNewAddress("");
       toast.success("Dirección agregada con éxito.");
     } catch (e) {
       console.error("Error añadiendo documento: ", e);
+      toast.error("No se pudo agregar la dirección.");
     }
   };
 
@@ -207,21 +220,27 @@ const App = ({ onLogout, currentUser }) => {
   };
 
   const enviarCorreo = async () => {
+    if (recipients.length === 0) {
+      toast.warning("Seleccioná al menos un destinatario.", {
+        theme: "colored",
+      });
+      return;
+    }
+
     try {
       SetIsLoading(true);
+      setIsMessageSent(false);
       const tokenResponse = await getAccessToken();
 
       const token = tokenResponse ? tokenResponse.access_token : null;
 
       if (!token) {
-        SetIsLoading(false);
         toast.error("No se pudo obtener el token de autenticación.", {
           theme: "colored",
         });
         return;
       }
-      // const contacts = await obtenerContactos(token)
-      // console.log(contacts)
+
       const htmlContent = templateRef.current
         ? templateRef.current.innerHTML
         : "";
@@ -241,13 +260,14 @@ const App = ({ onLogout, currentUser }) => {
 
       await sendEmail(emailObj, token);
       setIsMessageSent(true);
-      SetIsLoading(false);
       toast.success("Correo enviado exitosamente.", { theme: "colored" });
     } catch (error) {
-      // console.error("Error al enviar el correo:", error);
-      toast.error("Hubo un problema al enviar el correo.", {
+      console.error("Error al enviar el correo:", error);
+      toast.error(error?.message || "Hubo un problema al enviar el correo.", {
         theme: "colored",
       });
+    } finally {
+      SetIsLoading(false);
     }
   };
   const handleRecipientChange = (event) => {
@@ -272,68 +292,69 @@ const App = ({ onLogout, currentUser }) => {
       prevRecipients.filter((recipient) => recipient !== recipientToRemove)
     );
   };
+  const drawerClass = isDark
+    ? "bg-slate-900 border-slate-800 text-slate-100"
+    : "bg-white border-slate-200 text-[#102F45]";
+
+  const inputClass = isDark
+    ? "bg-slate-950 border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#0879CB]"
+    : "bg-slate-50 border-slate-300 text-[#102F45] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0879CB]";
+
   return (
-    <div className="flex flex-col min-h-screen min-w-screen md:w-full md:h-full bg-gradient-to-r from-blue-300 to-gray-500 overflow-x-hidden">
-  <div className="w-full border border-blue-700 rounded-lg">
+    <div
+      className={`flex flex-col min-h-screen w-full overflow-x-hidden transition-colors ${
+        isDark ? "bg-[#0A2338] text-slate-100" : "bg-[#F1F7FB] text-[#102F45]"
+      }`}
+    >
       <Header
-        title="Comunicados desde el area de sistemas"
+        title="Comunicados desde el área de sistemas"
         currentUser={currentUser}
+        theme={theme}
+        onToggleTheme={onToggleTheme}
+        onLogout={handleLogout}
       />
 
-</div>
-
-      <button
-        onClick={handleLogout}
-        className="fixed top-2 xs:p-0 xs:right-0 xs:top-0 right-5 z-50 px-3 sm:px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
-      >
-        Salir
-      </button>
       {/* Botón para mostrar/ocultar el formulario de edición */}
       <button
-  onClick={() => setIsFormVisible(!isFormVisible)}
-  className={`fixed top-12 z-50 p-1 rounded-md text-white transition ${
-    isFormVisible
-      ? "right-0 md:right-96 md:px-4 md:py-2 bg-gray-700"
-      : "right-0 top-0 md:right-0 md:px-4 md:py-2 bg-blue-600"
-  } hover:bg-blue-700 ${
-    isSendFormVisible ? "hidden sm:block" : "" /* Ocultar si otro formulario está abierto */
-  }`}
->
-  {isFormVisible ? ">>>" : "Editar Plantilla"}
-</button>
-
-{/* Botón para mostrar/ocultar el formulario de envío */}
-<button
-  onClick={() => setIsSendFormVisible(!isSendFormVisible)}
-  className={`fixed top-12 z-50 p-1 rounded-md text-white transition ${
-    isSendFormVisible
-      ? "left-0 md:left-96 md:px-4 md:py-2 bg-gray-700"
-      : "left-0 top-0 md:left-0 md:px-4 md:py-2 bg-blue-600"
-  } hover:bg-blue-700 ${
-    isFormVisible ? "hidden sm:block" : "" /* Ocultar si el otro formulario está abierto */
-  }`}
->
-  {isSendFormVisible ? "<<<" : "Configurar Envio"}
-</button>
-      {/* Contenedor del formulario, se despliega desde la derecha */}
-
-      <div
-        className={`fixed top-0 right-0 border border-blue-700 rounded-lg h-[85vh] w-96 bg-gray-800 text-white p-5 shadow-lg transition-transform overflow-y-auto ${
+        type="button"
+        onClick={() => setIsFormVisible(!isFormVisible)}
+        className={`fixed top-20 z-50 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium text-white shadow-md transition-all ${
           isFormVisible
-            ? "transform translate-x-0"
-            : "transform translate-x-full"
+            ? "right-2 md:right-[24.5rem] bg-slate-700 hover:bg-slate-600"
+            : "right-3 bg-[#0879CB] hover:bg-[#0667AE]"
+        } ${isSendFormVisible ? "hidden sm:block" : ""}`}
+      >
+        {isFormVisible ? "Cerrar edición" : "Editar Plantilla"}
+      </button>
+
+      {/* Botón para mostrar/ocultar el formulario de envío */}
+      <button
+        type="button"
+        onClick={() => setIsSendFormVisible(!isSendFormVisible)}
+        className={`fixed top-20 z-50 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium text-white shadow-md transition-all ${
+          isSendFormVisible
+            ? "left-2 md:left-[24.5rem] bg-slate-700 hover:bg-slate-600"
+            : "left-3 bg-[#0879CB] hover:bg-[#0667AE]"
+        } ${isFormVisible ? "hidden sm:block" : ""}`}
+      >
+        {isSendFormVisible ? "Cerrar envío" : "Configurar Envío"}
+      </button>
+
+      {/* Contenedor del formulario, se despliega desde la derecha */}
+      <div
+        className={`fixed top-16 right-0 border-l h-[calc(100vh-4rem)] w-full sm:w-96 p-5 shadow-xl transition-transform overflow-y-auto z-40 ${drawerClass} ${
+          isFormVisible ? "translate-x-0" : "translate-x-full"
         }`}
-        style={{ zIndex: 40 }}
       >
         {/* Formulario de edición */}
-        <h3 className="text-xl font-bold mb-4">Editar Plantilla</h3>
-        <div className="space-y-4 mt-4">
+        <h3 className="text-lg font-bold mb-4">Editar Plantilla</h3>
+        <div className="space-y-4 mt-4 text-sm">
           <label className="block">
-            Nivel de severidad:
+            <span className="font-medium">Nivel de severidad:</span>
             <select
               value={severity}
               onChange={(e) => setSeverity(e.target.value)}
-              className="block w-full mt-2 p-2 rounded bg-gray-700 border border-gray-600 focus:ring focus:ring-blue-600"
+              className={`block w-full mt-1.5 p-2 rounded-lg border ${inputClass}`}
             >
               <option value="high">Alta</option>
               <option value="medium">Media</option>
@@ -342,34 +363,34 @@ const App = ({ onLogout, currentUser }) => {
             </select>
           </label>
           <label className="block">
-            Título:
+            <span className="font-medium">Título:</span>
             <textarea
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full mt-2 p-2 rounded bg-gray-700 border border-gray-600 focus:ring focus:ring-blue-600"
+              className={`w-full mt-1.5 p-2 rounded-lg border ${inputClass}`}
             />
           </label>
 
           <label className="block">
-            Motivo:
+            <span className="font-medium">Motivo:</span>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="w-full mt-2 p-2 rounded bg-gray-700 border border-gray-600 focus:ring focus:ring-blue-600"
+              className={`w-full mt-1.5 p-2 rounded-lg border ${inputClass}`}
             />
           </label>
 
           <label className="block">
-            Impacto:
+            <span className="font-medium">Impacto:</span>
             <textarea
               value={impact}
               onChange={(e) => setImpact(e.target.value)}
-              className="w-full mt-2 p-2 rounded bg-gray-700 border border-gray-600 focus:ring focus:ring-blue-600"
+              className={`w-full mt-1.5 p-2 rounded-lg border ${inputClass}`}
             />
           </label>
 
           <label className="block">
-            Instrucciones:
+            <span className="font-medium">Instrucciones:</span>
             <textarea
               value={instructions.join("\n")}
               onChange={(e) =>
@@ -379,13 +400,20 @@ const App = ({ onLogout, currentUser }) => {
                     .filter((inst) => inst.trim() !== "")
                 )
               }
-              className="w-full mt-2 p-2 rounded bg-gray-700 border border-gray-600 focus:ring focus:ring-blue-600"
+              className={`w-full mt-1.5 p-2 rounded-lg border ${inputClass}`}
             />
           </label>
 
-          <h3 className="font-bold mt-6">Secciones Personalizadas</h3>
+          <h3 className="font-bold pt-2">Secciones Personalizadas</h3>
           {customSections.map((section, index) => (
-            <div key={index} className="bg-gray-700 p-2 rounded mb-2">
+            <div
+              key={index}
+              className={`p-3 rounded-lg border mb-2 ${
+                isDark
+                  ? "bg-slate-800/70 border-slate-700"
+                  : "bg-slate-50 border-slate-200"
+              }`}
+            >
               <input
                 type="text"
                 placeholder="Título de la sección"
@@ -393,7 +421,7 @@ const App = ({ onLogout, currentUser }) => {
                 onChange={(e) =>
                   handleCustomSectionChange(index, "title", e.target.value)
                 }
-                className="w-full mb-2 p-2 bg-gray-600 rounded border border-gray-500 focus:ring focus:ring-blue-600"
+                className={`w-full mb-2 p-2 rounded-lg border ${inputClass}`}
               />
               <textarea
                 placeholder="Contenido de la sección"
@@ -401,53 +429,51 @@ const App = ({ onLogout, currentUser }) => {
                 onChange={(e) =>
                   handleCustomSectionChange(index, "content", e.target.value)
                 }
-                className="w-full mb-2 p-2 bg-gray-600 rounded border border-gray-500 focus:ring focus:ring-blue-600"
+                className={`w-full mb-2 p-2 rounded-lg border ${inputClass}`}
               />
               <button
+                type="button"
                 onClick={() => removeCustomSection(index)}
-                className="w-full py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                className="w-full py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 Eliminar Sección
               </button>
             </div>
           ))}
           <button
+            type="button"
             onClick={addCustomSection}
-            className="w-full py-2 bg-blue-600 rounded hover:bg-blue-700"
+            className="w-full py-2 bg-[#0879CB] hover:bg-[#0667AE] text-white font-medium rounded-lg transition-colors"
           >
             Agregar Sección
           </button>
 
-          <label className="block mt-4">
+          <label className="flex items-center gap-2 pt-2 cursor-pointer">
             <input
               type="checkbox"
               checked={showPersistentIssueSection}
               onChange={(e) => setShowPersistentIssueSection(e.target.checked)}
-              className="mr-2"
+              className="rounded border-slate-400 text-[#0879CB] focus:ring-[#0879CB]"
             />
-            Mostrar sección "Si el problema persiste"
+            <span>Mostrar sección "Si el problema persiste"</span>
           </label>
         </div>
       </div>
-      {/* Contenedor del formulario de envio, se despliega desde la izquierda */}
+
+      {/* Contenedor del formulario de envío, se despliega desde la izquierda */}
       <div
-        className={`fixed top-0 border border-blue-700 rounded-lg left-0 h-[85vh] w-96 bg-gray-800 text-white p-5 shadow-lg transition-transform overflow-y-auto ${
-          isSendFormVisible
-            ? "transform translate-x-0"
-            : "transform -translate-x-full"
+        className={`fixed top-16 left-0 border-r h-[calc(100vh-4rem)] w-full sm:w-96 p-5 shadow-xl transition-transform overflow-y-auto z-40 ${drawerClass} ${
+          isSendFormVisible ? "translate-x-0" : "-translate-x-full"
         }`}
-        style={{ zIndex: 40 }}
       >
-        <div className="space-y-6 mt-1">
-          <h3 className="text-xl font-bold mb-4">
-            Datos de Envío del Comunicado
-          </h3>
-          <label className="block mb-4">
-            Destinatarios:
+        <div className="space-y-5 mt-1 text-sm">
+          <h3 className="text-lg font-bold">Datos de Envío del Comunicado</h3>
+          <label className="block">
+            <span className="font-medium">Destinatarios:</span>
             <select
               multiple
               onChange={handleRecipientChange}
-              className="w-full mt-2 p-2 rounded bg-gray-700 border border-gray-600 focus:ring focus:ring-blue-600"
+              className={`w-full mt-1.5 p-2 rounded-lg border min-h-[120px] ${inputClass}`}
             >
               {availableAddresses.map((address, index) => (
                 <option key={index} value={address}>
@@ -457,26 +483,35 @@ const App = ({ onLogout, currentUser }) => {
             </select>
           </label>
 
-          <label className="block mb-4">
-            Asunto:
+          <label className="block">
+            <span className="font-medium">Asunto:</span>
             <input
               type="text"
               value={emailSubject}
               onChange={(e) => setEmailSubject(e.target.value)}
-              className="w-full mt-2 p-2 rounded bg-gray-700 border border-gray-600 focus:ring focus:ring-blue-600"
+              className={`w-full mt-1.5 p-2 rounded-lg border ${inputClass}`}
             />
           </label>
+
           {/* Mostrar destinatarios seleccionados con opción de eliminar */}
           {recipients.length > 0 && (
             <div>
-              <p>Vas a enviar a:</p>
-              <ul>
+              <p className="font-medium mb-1.5">Vas a enviar a:</p>
+              <ul className="space-y-1.5">
                 {recipients.map((recipient, index) => (
-                  <li key={index} className="flex items-center">
-                    {recipient}
+                  <li
+                    key={index}
+                    className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs ${
+                      isDark
+                        ? "bg-slate-800 border-slate-700"
+                        : "bg-slate-50 border-slate-200"
+                    }`}
+                  >
+                    <span className="truncate">{recipient}</span>
                     <button
+                      type="button"
                       onClick={() => removeRecipient(recipient)}
-                      className="ml-2 text-white bg-red-600 rounded-full p-1 flex justify-center items-center w-5 h-5"
+                      className="ml-2 text-white bg-red-600 hover:bg-red-700 rounded-full flex justify-center items-center w-5 h-5 shrink-0"
                     >
                       ×
                     </button>
@@ -487,46 +522,58 @@ const App = ({ onLogout, currentUser }) => {
           )}
 
           <button
+            type="button"
             onClick={() => setIsAddAddressVisible(!isAddAddressVisible)}
-            className="mt-4 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 w-full"
+            className={`w-full px-4 py-2 rounded-lg font-medium border transition-colors ${
+              isDark
+                ? "bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-100"
+                : "bg-slate-100 border-slate-300 hover:bg-slate-200 text-[#102F45]"
+            }`}
           >
             {isAddAddressVisible
               ? "Ocultar sección dirección de mail"
-              : "Agregar/editar dirección de mail:"}
+              : "Agregar/editar dirección de mail"}
           </button>
+
           {/* Agregar nueva dirección */}
           {isAddAddressVisible && (
-            <div className="mt-4">
-              {/* Agregar nueva dirección */}
-              <label className="block">
-                <div className="flex mt-2">
-                  <input
-                    type="email"
-                    value={newAddress}
-                    onChange={(e) => setNewAddress(e.target.value)}
-                    placeholder="example@domain.com"
-                    className="flex-grow p-2 rounded bg-gray-700 border border-gray-600 focus:ring focus:ring-blue-600"
-                  />
-                  <button
-                    onClick={addAddress}
-                    className="ml-2 px-4 py-2 bg-green-600 rounded hover:bg-green-700"
-                  >
-                    +
-                  </button>
-                </div>
-              </label>
+            <div className="mt-2">
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={newAddress}
+                  onChange={(e) => setNewAddress(e.target.value)}
+                  placeholder="example@domain.com"
+                  className={`flex-grow p-2 rounded-lg border ${inputClass}`}
+                />
+                <button
+                  type="button"
+                  onClick={addAddress}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                >
+                  +
+                </button>
+              </div>
 
               {/* Lista de direcciones disponibles */}
               {availableAddresses.length > 0 && (
                 <div className="mt-4">
-                  <h4 className="font-bold">Direcciones disponibles:</h4>
-                  <ul>
+                  <h4 className="font-bold mb-1.5">Direcciones disponibles:</h4>
+                  <ul className="space-y-1.5">
                     {availableAddresses.map((address, index) => (
-                      <li key={index} className="flex items-center mt-2">
-                        {address}
+                      <li
+                        key={index}
+                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs ${
+                          isDark
+                            ? "bg-slate-800 border-slate-700"
+                            : "bg-slate-50 border-slate-200"
+                        }`}
+                      >
+                        <span className="truncate">{address}</span>
                         <button
+                          type="button"
                           onClick={() => removeAddress(address)}
-                          className="ml-2 text-white bg-red-600 rounded-full p-1 flex justify-center items-center w-5 h-5"
+                          className="ml-2 text-white bg-red-600 hover:bg-red-700 rounded-full flex justify-center items-center w-5 h-5 shrink-0"
                         >
                           ×
                         </button>
@@ -537,42 +584,48 @@ const App = ({ onLogout, currentUser }) => {
               )}
             </div>
           )}
+
           {isLoading && (
-            <TailSpin
-              visible={true}
-              height="60"
-              width="60"
-              color="#4fa94d"
-              ariaLabel="tail-spin-loading"
-            />
+            <div className="flex items-center gap-3 py-2">
+              <div className="relative flex items-center justify-center w-12 h-12">
+                <div className="absolute inset-0 rounded-full border-2 border-[#0879CB]/25 border-t-[#0879CB] animate-spin" />
+                <BrandLogo size={36} />
+              </div>
+              <span className="text-xs font-medium opacity-80">
+                Enviando comunicado...
+              </span>
+            </div>
           )}
           {isMessageSent && (
-            <p className="text-green-500 font-semibold mt-2">
+            <p className="text-emerald-500 font-semibold mt-2">
               Mensaje enviado exitosamente.
             </p>
           )}
+
           {/* Botón para enviar comunicado */}
           <button
+            type="button"
+            disabled={isLoading}
             onClick={enviarCorreo}
-            className="w-full py-2 bg-blue-600 rounded hover:bg-blue-700 text-white mt-4"
+            className="w-full py-2.5 bg-[#0879CB] hover:bg-[#0667AE] disabled:opacity-60 text-white font-semibold rounded-lg transition-colors"
           >
             Enviar Comunicado
           </button>
         </div>
       </div>
 
-      {/* Contenido principal, separado del formulario */}
-      <div
-        className="flex flex-col items-center justify-center w-full"
+      {/* Contenido principal */}
+      <main
+        className="flex-1 flex flex-col items-center justify-center max-w-full w-full mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-10"
         style={{
-          paddingLeft: isSendFormVisible ? "20px" : "0",
-          paddingRight: isFormVisible ? "20px" : "0",
+          paddingLeft: isSendFormVisible ? "20px" : undefined,
+          paddingRight: isFormVisible ? "20px" : undefined,
           transition: "padding 0.3s ease",
         }}
       >
         <div
           ref={templateRef}
-          className="px-5 sm:px-8 py-6 max-w-md md:max-w-lg lg:max-w-3xl w-auto border border-transparent mx-0.5 bg-white rounded-lg shadow-lg mt-5 mb-14"
+          className="px-5 sm:px-8 py-6 max-w-md md:max-w-lg lg:max-w-3xl w-full bg-white text-[#333] rounded-xl shadow-lg mt-4 mb-8"
         >
           <NotificationTemplate
             title={title}
@@ -584,9 +637,11 @@ const App = ({ onLogout, currentUser }) => {
             showPersistentIssueSection={showPersistentIssueSection}
           />
         </div>
+
         <button
+          type="button"
           onClick={saveTemplate}
-          className="px-4 py-2 bg-blue-600 rounded-md text-white hover:bg-green-700 mr-2"
+          className="px-5 py-2.5 bg-[#0879CB] hover:bg-[#0667AE] rounded-lg text-white font-medium shadow-sm transition-colors"
         >
           Guardar Template
         </button>
@@ -597,17 +652,24 @@ const App = ({ onLogout, currentUser }) => {
             templates={templates}
             onTemplateSelect={loadTemplate}
             onDelete={deleteTemplate}
+            theme={theme}
           />
         ) : (
-          <div className="mt-5 text-center text-gray-500">
+          <div
+            className={`mt-5 text-center text-sm ${
+              isDark ? "text-slate-400" : "text-[#536F83]"
+            }`}
+          >
             Aún no tienes plantillas guardadas.
           </div>
         )}
-      </div>
-      <div className="w-full border border-blue-700 rounded-lg">
-      <Footer text="© 2024 Distrinando sistemas" />
-      </div>
-      <ToastContainer />
+      </main>
+
+      <Footer
+        text={`© ${new Date().getFullYear()} Distrinando S.A. · Sistemas`}
+        theme={theme}
+      />
+      <ToastContainer theme={isDark ? "dark" : "light"} />
     </div>
   );
 };
