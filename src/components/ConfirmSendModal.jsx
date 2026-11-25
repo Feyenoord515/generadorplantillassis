@@ -1,11 +1,12 @@
 import React, { useEffect } from "react";
-import { Mail, Send, X } from "lucide-react";
+import { EyeOff, Mail, Send, X } from "lucide-react";
 
 export default function ConfirmSendModal({
   isOpen,
   theme = "dark",
   emailSubject,
-  recipients,
+  recipients = [],
+  bccRecipients = [],
   isLoading,
   onCancel,
   onConfirm,
@@ -82,26 +83,51 @@ export default function ConfirmSendModal({
             </p>
           </div>
 
-          <div>
-            <span className={isDark ? "text-slate-400" : "text-[#536F83]"}>
-              Destinatarios ({recipients.length}):
-            </span>
-            <div className="flex flex-wrap gap-1.5 mt-1.5 max-h-36 overflow-y-auto">
-              {recipients.map((email) => (
-                <span
-                  key={email}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${
-                    isDark
-                      ? "bg-slate-900 border-slate-700 text-slate-200"
-                      : "bg-white border-slate-200 text-[#102F45]"
-                  }`}
-                >
-                  <Mail className="w-3 h-3 text-[#0879CB]" />
-                  <span>{email}</span>
-                </span>
-              ))}
+          {recipients.length > 0 && (
+            <div>
+              <span className={isDark ? "text-slate-400" : "text-[#536F83]"}>
+                Para ({recipients.length}):
+              </span>
+              <div className="flex flex-wrap gap-1.5 mt-1.5 max-h-28 overflow-y-auto">
+                {recipients.map((email) => (
+                  <span
+                    key={email}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${
+                      isDark
+                        ? "bg-slate-900 border-slate-700 text-slate-200"
+                        : "bg-white border-slate-200 text-[#102F45]"
+                    }`}
+                  >
+                    <Mail className="w-3 h-3 text-[#0879CB]" />
+                    <span>{email}</span>
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {bccRecipients.length > 0 && (
+            <div>
+              <span className={isDark ? "text-amber-300" : "text-amber-700"}>
+                Copia oculta · CCO ({bccRecipients.length}):
+              </span>
+              <div className="flex flex-wrap gap-1.5 mt-1.5 max-h-28 overflow-y-auto">
+                {bccRecipients.map((email) => (
+                  <span
+                    key={email}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${
+                      isDark
+                        ? "bg-amber-500/10 border-amber-500/30 text-amber-200"
+                        : "bg-amber-50 border-amber-200 text-amber-900"
+                    }`}
+                  >
+                    <EyeOff className="w-3 h-3 text-amber-500" />
+                    <span>{email}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-2.5">

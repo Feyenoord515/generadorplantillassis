@@ -14,6 +14,7 @@ import {
   Copy,
   Edit3,
   Eye,
+  EyeOff,
   FolderOpen,
   Mail,
   Send,
@@ -63,6 +64,7 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
 
   const [activeTab, setActiveTab] = useState("editor");
   const [recipients, setRecipients] = useState([]);
+  const [bccRecipients, setBccRecipients] = useState([]);
   const [emailSubject, setEmailSubject] = useState("Comunicado desde Sistemas");
   const [isMessageSent, setIsMessageSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -201,29 +203,58 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
     );
   };
 
-  const toggleRecipient = (address) => {
-    setRecipients((prev) =>
-      prev.includes(address)
-        ? prev.filter((item) => item !== address)
-        : [...prev, address]
-    );
+  const toggleRecipient = (address, targetField = "to") => {
+    const inTo = recipients.includes(address);
+    const inBcc = bccRecipients.includes(address);
+
+    if (inTo || inBcc) {
+      setRecipients((prev) => prev.filter((item) => item !== address));
+      setBccRecipients((prev) => prev.filter((item) => item !== address));
+      return;
+    }
+
+    if (targetField === "bcc") {
+      setBccRecipients((prev) => [...prev, address]);
+    } else {
+      setRecipients((prev) => [...prev, address]);
+    }
   };
 
-  const selectAllRecipients = () => {
-    setRecipients([...availableAddresses]);
+  const moveRecipient = (address) => {
+    if (recipients.includes(address)) {
+      setRecipients((prev) => prev.filter((item) => item !== address));
+      setBccRecipients((prev) => [...new Set([...prev, address])]);
+    } else if (bccRecipients.includes(address)) {
+      setBccRecipients((prev) => prev.filter((item) => item !== address));
+      setRecipients((prev) => [...new Set([...prev, address])]);
+    }
+  };
+
+  const selectAllRecipients = (targetField = "to") => {
+    if (targetField === "bcc") {
+      setRecipients([]);
+      setBccRecipients([...availableAddresses]);
+    } else {
+      setBccRecipients([]);
+      setRecipients([...availableAddresses]);
+    }
   };
 
   const clearRecipients = () => {
     setRecipients([]);
+    setBccRecipients([]);
   };
 
   const removeRecipient = (recipientToRemove) => {
     setRecipients((prev) =>
       prev.filter((recipient) => recipient !== recipientToRemove)
     );
+    setBccRecipients((prev) =>
+      prev.filter((recipient) => recipient !== recipientToRemove)
+    );
   };
 
-  const addAddress = async () => {
+  const addAddress = async (targetField = "to") => {
     const trimmed = newAddress.trim();
     if (!trimmed) {
       toast.error("La dirección no puede estar vacía.");
@@ -237,7 +268,11 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
     try {
       await addDoc(collection(db, "recipients"), { address: trimmed });
       setAvailableAddresses((prev) => [...new Set([...prev, trimmed])]);
-      setRecipients((prev) => [...new Set([...prev, trimmed])]);
+      if (targetField === "bcc") {
+        setBccRecipients((prev) => [...new Set([...prev, trimmed])]);
+      } else {
+        setRecipients((prev) => [...new Set([...prev, trimmed])]);
+      }
       setNewAddress("");
       toast.success("Dirección agregada con éxito.");
     } catch (e) {
@@ -259,6 +294,7 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
           prev.filter((item) => item !== address)
         );
         setRecipients((prev) => prev.filter((item) => item !== address));
+        setBccRecipients((prev) => prev.filter((item) => item !== address));
         toast.success("Dirección eliminada correctamente.");
       } else {
         toast.error("No se encontró la dirección en la base de datos.");
@@ -269,8 +305,10 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
     }
   };
 
+  const totalRecipients = recipients.length + bccRecipients.length;
+
   const requestSendEmail = () => {
-    if (recipients.length === 0) {
+    if (totalRecipients === 0) {
       toast.warning("Seleccioná al menos un destinatario.");
       setActiveTab("send");
       return;
@@ -301,9 +339,16 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
             contentType: "HTML",
             content: htmlContent,
           },
-          toRecipients: recipients.map((email) => ({
-            emailAddress: { address: email },
-          })),
+          ...(recipients.length > 0 && {
+            toRecipients: recipients.map((email) => ({
+              emailAddress: { address: email },
+            })),
+          }),
+          ...(bccRecipients.length > 0 && {
+            bccRecipients: bccRecipients.map((email) => ({
+              emailAddress: { address: email },
+            })),
+          }),
         },
       };
 
@@ -348,7 +393,7 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
       id: "send",
       label: "Envío",
       icon: Send,
-      badge: recipients.length > 0 ? recipients.length : null,
+      badge: totalRecipients > 0 ? totalRecipients : null,
     },
     {
       id: "templates",
@@ -457,7 +502,9 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
                   setEmailSubject={setEmailSubject}
                   availableAddresses={availableAddresses}
                   recipients={recipients}
+                  bccRecipients={bccRecipients}
                   onToggleRecipient={toggleRecipient}
+                  onMoveRecipient={moveRecipient}
                   onSelectAllRecipients={selectAllRecipients}
                   onClearRecipients={clearRecipients}
                   onRemoveRecipient={removeRecipient}
@@ -534,7 +581,7 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#0879CB] hover:bg-[#0667AE] text-white transition-colors shadow-sm"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  Enviar ({recipients.length})
+                  Enviar ({totalRecipients})
                 </button>
               </div>
             </div>
@@ -611,6 +658,10 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
                           : ""}
                       </span>
                     </span>
+                  ) : bccRecipients.length > 0 ? (
+                    <span className="opacity-65 italic">
+                      Solo copia oculta
+                    </span>
                   ) : (
                     <button
                       type="button"
@@ -621,6 +672,22 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
                     </button>
                   )}
                 </div>
+                {bccRecipients.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold w-14 shrink-0 text-amber-500">
+                      CCO:
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 truncate">
+                      <EyeOff className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <span className="truncate">
+                        {bccRecipients.slice(0, 3).join(", ")}
+                        {bccRecipients.length > 3
+                          ? ` y ${bccRecipients.length - 3} más`
+                          : ""}
+                      </span>
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="bg-white text-[#333] p-4 sm:p-6 flex justify-center">
@@ -670,6 +737,7 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
         theme={theme}
         emailSubject={emailSubject}
         recipients={recipients}
+        bccRecipients={bccRecipients}
         isLoading={isLoading}
         onCancel={() => setIsConfirmModalOpen(false)}
         onConfirm={enviarCorreo}
