@@ -9,48 +9,73 @@ import {
 import { db } from "./firebaseConfig";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import {
+  BookmarkPlus,
+  Copy,
+  Edit3,
+  Eye,
+  FolderOpen,
+  Mail,
+  Send,
+  X,
+} from "lucide-react";
 
 import NotificationTemplate from "./NotificationTemplate";
-import TemplateCarousel from "./TemplateCarousel";
 import { getAccessToken, sendEmail } from "./sender";
-import BrandLogo from "./components/BrandLogo";
-
 import Header from "./Header";
 import Footer from "./Footer";
+import EditorPanel from "./components/EditorPanel";
+import SendPanel from "./components/SendPanel";
+import TemplatesPanel from "./components/TemplatesPanel";
+import ConfirmSendModal from "./components/ConfirmSendModal";
+
+const DEFAULT_TEMPLATE = {
+  severity: "high",
+  title: "Mantenimiento Urgente!",
+  reason:
+    "Debido a un mantenimiento urgente en SAP (espacio de almacenamiento lleno), se ha decidido apagar temporalmente uno de los servidores.",
+  impact:
+    "Algunos usuarios podrían experimentar desconexiones y problemas de acceso.",
+  instructions: [
+    "Abrir 'Conexión a Escritorio Remoto' desde el menú de inicio de Windows.",
+    "Conectar usando 10.0.0.76 o 10.0.0.3, los servidores restantes.",
+  ],
+  customSections: [{ title: "", content: "" }],
+  showPersistentIssueSection: true,
+};
 
 const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
   const isDark = theme === "dark";
-  // Estado para manejar los datos editables
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
-  const [severity, setSeverity] = useState("high");
-  const [title, setTitle] = useState("Mantenimiento Urgente!");
-  const [showPersistentIssueSection, setShowPersistentIssueSection] =
-    useState(true);
-  const [reason, setReason] = useState(
-    "Debido a un mantenimiento urgente en SAP (espacio de almacenamiento lleno), se ha decidido apagar temporalmente uno de los servidores."
-  );
-  const [impact, setImpact] = useState(
-    "Algunos usuarios podrían experimentar desconexiones y problemas de acceso."
-  );
-  const [instructions, setInstructions] = useState([
-    "Abrir 'Conexión a Escritorio Remoto' desde el menú de inicio de Windows.",
-    "Conectar usando 10.0.0.76 o 10.0.0.3, los servidores restantes.",
-  ]);
 
-  // Estado para manejar la visibilidad del formulario de edición
-  const [isFormVisible, setIsFormVisible] = useState(false);
-  const [customSections, setCustomSections] = useState([
-    { title: "", content: "" },
-  ]);
-  const [isSendFormVisible, setIsSendFormVisible] = useState(false);
-  const [recipients, setRecipients] = useState([]); // Nuevo estado para destinatarios
+  const [severity, setSeverity] = useState(DEFAULT_TEMPLATE.severity);
+  const [title, setTitle] = useState(DEFAULT_TEMPLATE.title);
+  const [showPersistentIssueSection, setShowPersistentIssueSection] = useState(
+    DEFAULT_TEMPLATE.showPersistentIssueSection
+  );
+  const [reason, setReason] = useState(DEFAULT_TEMPLATE.reason);
+  const [impact, setImpact] = useState(DEFAULT_TEMPLATE.impact);
+  const [instructions, setInstructions] = useState(
+    DEFAULT_TEMPLATE.instructions
+  );
+  const [customSections, setCustomSections] = useState(
+    DEFAULT_TEMPLATE.customSections
+  );
+
+  const [activeTab, setActiveTab] = useState("editor");
+  const [recipients, setRecipients] = useState([]);
   const [emailSubject, setEmailSubject] = useState("Comunicado desde Sistemas");
   const [isMessageSent, setIsMessageSent] = useState(false);
-  const [isLoading, SetIsLoading] = useState(false);
-  const [availableAddresses, setAvailableAddresses] = useState([]); // Lista inicial de direcciones disponibles
-  const [isAddAddressVisible, setIsAddAddressVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [availableAddresses, setAvailableAddresses] = useState([]);
   const [newAddress, setNewAddress] = useState("");
   const [templates, setTemplates] = useState([]);
+  const [hoveredTemplate, setHoveredTemplate] = useState(null);
+  const [pinnedTemplate, setPinnedTemplate] = useState(null);
+
+  const activePreviewTemplate =
+    activeTab === "templates" ? hoveredTemplate || pinnedTemplate : null;
+
   const templatesCollection = `templates-${currentUser}`;
   const templateRef = useRef(null);
 
@@ -58,8 +83,7 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
     const fetchRecipients = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, "recipients"));
-        const addresses = querySnapshot.docs.map((doc) => doc.data().address);
-
+        const addresses = querySnapshot.docs.map((d) => d.data().address);
         setAvailableAddresses((prev) => [...new Set([...prev, ...addresses])]);
       } catch (error) {
         console.error("Error al obtener destinatarios:", error);
@@ -76,9 +100,9 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
         const querySnapshot = await getDocs(
           collection(db, templatesCollection)
         );
-        const userTemplates = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
+        const userTemplates = querySnapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
         }));
         setTemplates(userTemplates);
       } catch (error) {
@@ -89,17 +113,29 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
 
     fetchTemplates();
   }, [templatesCollection]);
-  // console.log(templateRef.current.outerHTML)
+
+  const cleanInstructions = instructions.filter((inst) => inst.trim() !== "");
+
+  const resetTemplate = () => {
+    setSeverity("announcement");
+    setTitle("");
+    setReason("");
+    setImpact("");
+    setInstructions([]);
+    setCustomSections([]);
+    setShowPersistentIssueSection(true);
+    toast.info("Formulario limpio para un nuevo comunicado.");
+  };
+
   const saveTemplate = async () => {
     const templateData = {
       createdAt: new Date().toISOString(),
       state: {
-        // Incluye el estado actual para fácil reutilización
         severity,
         title,
         reason,
         impact,
-        instructions,
+        instructions: cleanInstructions,
         customSections,
         showPersistentIssueSection,
       },
@@ -110,13 +146,10 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
         collection(db, templatesCollection),
         templateData
       );
-      setTemplates((prevTemplates) => [
-        ...prevTemplates,
-        { id: docRef.id, ...templateData },
-      ]);
-      toast.success("Plantilla guardada con éxito!");
+      setTemplates((prev) => [...prev, { id: docRef.id, ...templateData }]);
+      toast.success("Plantilla guardada con éxito.");
     } catch (e) {
-      console.error("Error guardando plantilla: ", e);
+      console.error("Error guardando plantilla:", e);
       toast.error("Error al guardar la plantilla.");
     }
   };
@@ -128,87 +161,104 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
     setReason(state.reason || "");
     setImpact(state.impact || "");
     setInstructions(state.instructions || []);
-    setCustomSections(state.customSections || [{ title: "", content: "" }]);
-    setShowPersistentIssueSection(state.showPersistentIssueSection || false);
-
+    setCustomSections(state.customSections || []);
+    setShowPersistentIssueSection(Boolean(state.showPersistentIssueSection));
+    setHoveredTemplate(null);
+    setPinnedTemplate(null);
+    setActiveTab("editor");
     toast.success("Plantilla cargada con éxito.");
   };
+
+  const togglePinPreview = (template) => {
+    setPinnedTemplate((prev) =>
+      prev?.id === template.id ? null : template
+    );
+  };
+
   const deleteTemplate = async (id) => {
     try {
       await deleteDoc(doc(db, templatesCollection, id));
-      setTemplates(templates.filter((template) => template.id !== id));
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
       toast.success("Plantilla eliminada con éxito.");
     } catch (e) {
-      console.error("Error al eliminar plantilla: ", e);
+      console.error("Error al eliminar plantilla:", e);
       toast.error("Error al eliminar la plantilla.");
     }
   };
 
-  const handleLogout = () => {
-    console.log("Cerrando sesión...");
-    setIsLoggedIn(false);
-    onLogout(false); // Notifica al componente raíz que el usuario salió
-  };
-
-  // Renderizar el Login si no está logueado
-  if (!isLoggedIn) {
-    console.log("Usuario deslogueado, regresando al login.");
-    return null; // Evita renderizar si el usuario no está logueado
-  }
   const addCustomSection = () =>
-    setCustomSections([...customSections, { title: "", content: "" }]);
+    setCustomSections((prev) => [...prev, { title: "", content: "" }]);
+
   const removeCustomSection = (index) => {
-    setCustomSections(customSections.filter((_, i) => i !== index));
+    setCustomSections((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleCustomSectionChange = (index, field, value) => {
-    const updatedSections = customSections.map((section, i) =>
-      i === index ? { ...section, [field]: value } : section
+    setCustomSections((prev) =>
+      prev.map((section, i) =>
+        i === index ? { ...section, [field]: value } : section
+      )
     );
-    setCustomSections(updatedSections);
   };
+
+  const toggleRecipient = (address) => {
+    setRecipients((prev) =>
+      prev.includes(address)
+        ? prev.filter((item) => item !== address)
+        : [...prev, address]
+    );
+  };
+
+  const selectAllRecipients = () => {
+    setRecipients([...availableAddresses]);
+  };
+
+  const clearRecipients = () => {
+    setRecipients([]);
+  };
+
+  const removeRecipient = (recipientToRemove) => {
+    setRecipients((prev) =>
+      prev.filter((recipient) => recipient !== recipientToRemove)
+    );
+  };
+
   const addAddress = async () => {
     const trimmed = newAddress.trim();
-    if (trimmed === "") {
+    if (!trimmed) {
       toast.error("La dirección no puede estar vacía.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      toast.error("Ingresá una dirección de correo válida.");
       return;
     }
 
     try {
-      await addDoc(collection(db, "recipients"), {
-        address: trimmed,
-      });
+      await addDoc(collection(db, "recipients"), { address: trimmed });
       setAvailableAddresses((prev) => [...new Set([...prev, trimmed])]);
       setRecipients((prev) => [...new Set([...prev, trimmed])]);
       setNewAddress("");
       toast.success("Dirección agregada con éxito.");
     } catch (e) {
-      console.error("Error añadiendo documento: ", e);
+      console.error("Error añadiendo documento:", e);
       toast.error("No se pudo agregar la dirección.");
     }
   };
 
-  // Eliminar dirección de Firestore
   const removeAddress = async (address) => {
     try {
-      // Buscar el documento correspondiente a la dirección en Firestore
       const addressRef = await getDocs(collection(db, "recipients"));
       const addressDoc = addressRef.docs.find(
-        (doc) => doc.data().address === address
+        (d) => d.data().address === address
       );
-  
+
       if (addressDoc) {
-        // Eliminar el documento en Firestore
         await deleteDoc(doc(db, "recipients", addressDoc.id));
-  
-        // Actualizar los estados locales
         setAvailableAddresses((prev) =>
-          prev.filter((availableAddress) => availableAddress !== address)
+          prev.filter((item) => item !== address)
         );
-        setRecipients((prev) =>
-          prev.filter((recipient) => recipient !== address)
-        );
-  
+        setRecipients((prev) => prev.filter((item) => item !== address));
         toast.success("Dirección eliminada correctamente.");
       } else {
         toast.error("No se encontró la dirección en la base de datos.");
@@ -219,25 +269,24 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
     }
   };
 
-  const enviarCorreo = async () => {
+  const requestSendEmail = () => {
     if (recipients.length === 0) {
-      toast.warning("Seleccioná al menos un destinatario.", {
-        theme: "colored",
-      });
+      toast.warning("Seleccioná al menos un destinatario.");
+      setActiveTab("send");
       return;
     }
+    setIsConfirmModalOpen(true);
+  };
 
+  const enviarCorreo = async () => {
     try {
-      SetIsLoading(true);
+      setIsLoading(true);
       setIsMessageSent(false);
       const tokenResponse = await getAccessToken();
-
       const token = tokenResponse ? tokenResponse.access_token : null;
 
       if (!token) {
-        toast.error("No se pudo obtener el token de autenticación.", {
-          theme: "colored",
-        });
+        toast.error("No se pudo obtener el token de autenticación.");
         return;
       }
 
@@ -260,45 +309,54 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
 
       await sendEmail(emailObj, token);
       setIsMessageSent(true);
-      toast.success("Correo enviado exitosamente.", { theme: "colored" });
+      setIsConfirmModalOpen(false);
+      toast.success("Correo enviado exitosamente.");
     } catch (error) {
       console.error("Error al enviar el correo:", error);
-      toast.error(error?.message || "Hubo un problema al enviar el correo.", {
-        theme: "colored",
-      });
+      toast.error(error?.message || "Hubo un problema al enviar el correo.");
     } finally {
-      SetIsLoading(false);
+      setIsLoading(false);
     }
   };
-  const handleRecipientChange = (event) => {
-    const options = event.target.options;
-    const selectedRecipients = [];
 
-    for (let i = 0; i < options.length; i++) {
-      if (options[i].selected) {
-        selectedRecipients.push(options[i].value);
+  const copyHtmlToClipboard = async () => {
+    if (!templateRef.current) return;
+    const htmlContent = templateRef.current.innerHTML;
+
+    try {
+      if (window.ClipboardItem && navigator.clipboard?.write) {
+        const item = new window.ClipboardItem({
+          "text/html": new Blob([htmlContent], { type: "text/html" }),
+          "text/plain": new Blob([templateRef.current.innerText], {
+            type: "text/plain",
+          }),
+        });
+        await navigator.clipboard.write([item]);
+      } else {
+        await navigator.clipboard.writeText(htmlContent);
       }
+      toast.success("Comunicado copiado al portapapeles.");
+    } catch (err) {
+      console.error("Error al copiar HTML:", err);
+      toast.error("No se pudo copiar al portapapeles.");
     }
-
-    // Combina el estado actual de recipients con los nuevos seleccionados y elimina duplicados
-    setRecipients((prevRecipients) => [
-      ...new Set([...prevRecipients, ...selectedRecipients]),
-    ]);
-
-    // console.log("Destinatarios acumulados:", recipients);
   };
-  const removeRecipient = (recipientToRemove) => {
-    setRecipients((prevRecipients) =>
-      prevRecipients.filter((recipient) => recipient !== recipientToRemove)
-    );
-  };
-  const drawerClass = isDark
-    ? "bg-slate-900 border-slate-800 text-slate-100"
-    : "bg-white border-slate-200 text-[#102F45]";
 
-  const inputClass = isDark
-    ? "bg-slate-950 border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#0879CB]"
-    : "bg-slate-50 border-slate-300 text-[#102F45] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0879CB]";
+  const tabs = [
+    { id: "editor", label: "Contenido", icon: Edit3 },
+    {
+      id: "send",
+      label: "Envío",
+      icon: Send,
+      badge: recipients.length > 0 ? recipients.length : null,
+    },
+    {
+      id: "templates",
+      label: "Plantillas",
+      icon: FolderOpen,
+      badge: templates.length > 0 ? templates.length : null,
+    },
+  ];
 
   return (
     <div
@@ -311,359 +369,311 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
         currentUser={currentUser}
         theme={theme}
         onToggleTheme={onToggleTheme}
-        onLogout={handleLogout}
+        onLogout={onLogout}
       />
 
-      {/* Botón para mostrar/ocultar el formulario de edición */}
-      <button
-        type="button"
-        onClick={() => setIsFormVisible(!isFormVisible)}
-        className={`fixed top-20 z-50 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium text-white shadow-md transition-all ${
-          isFormVisible
-            ? "right-2 md:right-[24.5rem] bg-slate-700 hover:bg-slate-600"
-            : "right-3 bg-[#0879CB] hover:bg-[#0667AE]"
-        } ${isSendFormVisible ? "hidden sm:block" : ""}`}
-      >
-        {isFormVisible ? "Cerrar edición" : "Editar Plantilla"}
-      </button>
-
-      {/* Botón para mostrar/ocultar el formulario de envío */}
-      <button
-        type="button"
-        onClick={() => setIsSendFormVisible(!isSendFormVisible)}
-        className={`fixed top-20 z-50 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium text-white shadow-md transition-all ${
-          isSendFormVisible
-            ? "left-2 md:left-[24.5rem] bg-slate-700 hover:bg-slate-600"
-            : "left-3 bg-[#0879CB] hover:bg-[#0667AE]"
-        } ${isFormVisible ? "hidden sm:block" : ""}`}
-      >
-        {isSendFormVisible ? "Cerrar envío" : "Configurar Envío"}
-      </button>
-
-      {/* Contenedor del formulario, se despliega desde la derecha */}
-      <div
-        className={`fixed top-16 right-0 border-l h-[calc(100vh-4rem)] w-full sm:w-96 p-5 shadow-xl transition-transform overflow-y-auto z-40 ${drawerClass} ${
-          isFormVisible ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        {/* Formulario de edición */}
-        <h3 className="text-lg font-bold mb-4">Editar Plantilla</h3>
-        <div className="space-y-4 mt-4 text-sm">
-          <label className="block">
-            <span className="font-medium">Nivel de severidad:</span>
-            <select
-              value={severity}
-              onChange={(e) => setSeverity(e.target.value)}
-              className={`block w-full mt-1.5 p-2 rounded-lg border ${inputClass}`}
-            >
-              <option value="high">Alta</option>
-              <option value="medium">Media</option>
-              <option value="low">Baja</option>
-              <option value="announcement">Anuncio</option>
-            </select>
-          </label>
-          <label className="block">
-            <span className="font-medium">Título:</span>
-            <textarea
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className={`w-full mt-1.5 p-2 rounded-lg border ${inputClass}`}
-            />
-          </label>
-
-          <label className="block">
-            <span className="font-medium">Motivo:</span>
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className={`w-full mt-1.5 p-2 rounded-lg border ${inputClass}`}
-            />
-          </label>
-
-          <label className="block">
-            <span className="font-medium">Impacto:</span>
-            <textarea
-              value={impact}
-              onChange={(e) => setImpact(e.target.value)}
-              className={`w-full mt-1.5 p-2 rounded-lg border ${inputClass}`}
-            />
-          </label>
-
-          <label className="block">
-            <span className="font-medium">Instrucciones:</span>
-            <textarea
-              value={instructions.join("\n")}
-              onChange={(e) =>
-                setInstructions(
-                  e.target.value
-                    .split("\n")
-                    .filter((inst) => inst.trim() !== "")
-                )
-              }
-              className={`w-full mt-1.5 p-2 rounded-lg border ${inputClass}`}
-            />
-          </label>
-
-          <h3 className="font-bold pt-2">Secciones Personalizadas</h3>
-          {customSections.map((section, index) => (
+      <main className="flex-1 max-w-full w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Columna izquierda: Panel de control con pestañas */}
+          <section
+            className={`lg:col-span-5 xl:col-span-4 rounded-2xl border shadow-lg overflow-hidden transition-colors ${
+              isDark
+                ? "bg-slate-900 border-slate-800"
+                : "bg-white border-slate-200"
+            }`}
+          >
+            {/* Tabs */}
             <div
-              key={index}
-              className={`p-3 rounded-lg border mb-2 ${
+              className={`grid grid-cols-3 border-b ${
                 isDark
-                  ? "bg-slate-800/70 border-slate-700"
-                  : "bg-slate-50 border-slate-200"
+                  ? "border-slate-800 bg-slate-950/50"
+                  : "border-slate-200 bg-slate-50"
               }`}
             >
-              <input
-                type="text"
-                placeholder="Título de la sección"
-                value={section.title}
-                onChange={(e) =>
-                  handleCustomSectionChange(index, "title", e.target.value)
-                }
-                className={`w-full mb-2 p-2 rounded-lg border ${inputClass}`}
-              />
-              <textarea
-                placeholder="Contenido de la sección"
-                value={section.content}
-                onChange={(e) =>
-                  handleCustomSectionChange(index, "content", e.target.value)
-                }
-                className={`w-full mb-2 p-2 rounded-lg border ${inputClass}`}
-              />
-              <button
-                type="button"
-                onClick={() => removeCustomSection(index)}
-                className="w-full py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Eliminar Sección
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={addCustomSection}
-            className="w-full py-2 bg-[#0879CB] hover:bg-[#0667AE] text-white font-medium rounded-lg transition-colors"
-          >
-            Agregar Sección
-          </button>
-
-          <label className="flex items-center gap-2 pt-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showPersistentIssueSection}
-              onChange={(e) => setShowPersistentIssueSection(e.target.checked)}
-              className="rounded border-slate-400 text-[#0879CB] focus:ring-[#0879CB]"
-            />
-            <span>Mostrar sección "Si el problema persiste"</span>
-          </label>
-        </div>
-      </div>
-
-      {/* Contenedor del formulario de envío, se despliega desde la izquierda */}
-      <div
-        className={`fixed top-16 left-0 border-r h-[calc(100vh-4rem)] w-full sm:w-96 p-5 shadow-xl transition-transform overflow-y-auto z-40 ${drawerClass} ${
-          isSendFormVisible ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="space-y-5 mt-1 text-sm">
-          <h3 className="text-lg font-bold">Datos de Envío del Comunicado</h3>
-          <label className="block">
-            <span className="font-medium">Destinatarios:</span>
-            <select
-              multiple
-              onChange={handleRecipientChange}
-              className={`w-full mt-1.5 p-2 rounded-lg border min-h-[120px] ${inputClass}`}
-            >
-              {availableAddresses.map((address, index) => (
-                <option key={index} value={address}>
-                  {address}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="font-medium">Asunto:</span>
-            <input
-              type="text"
-              value={emailSubject}
-              onChange={(e) => setEmailSubject(e.target.value)}
-              className={`w-full mt-1.5 p-2 rounded-lg border ${inputClass}`}
-            />
-          </label>
-
-          {/* Mostrar destinatarios seleccionados con opción de eliminar */}
-          {recipients.length > 0 && (
-            <div>
-              <p className="font-medium mb-1.5">Vas a enviar a:</p>
-              <ul className="space-y-1.5">
-                {recipients.map((recipient, index) => (
-                  <li
-                    key={index}
-                    className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs ${
-                      isDark
-                        ? "bg-slate-800 border-slate-700"
-                        : "bg-slate-50 border-slate-200"
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center justify-center gap-1.5 py-3 px-2 text-xs sm:text-sm font-semibold border-b-2 transition-colors ${
+                      isActive
+                        ? "border-[#0879CB] text-[#0879CB]"
+                        : isDark
+                          ? "border-transparent text-slate-400 hover:text-slate-200"
+                          : "border-transparent text-[#536F83] hover:text-[#102F45]"
                     }`}
                   >
-                    <span className="truncate">{recipient}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeRecipient(recipient)}
-                      className="ml-2 text-white bg-red-600 hover:bg-red-700 rounded-full flex justify-center items-center w-5 h-5 shrink-0"
-                    >
-                      ×
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setIsAddAddressVisible(!isAddAddressVisible)}
-            className={`w-full px-4 py-2 rounded-lg font-medium border transition-colors ${
-              isDark
-                ? "bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-100"
-                : "bg-slate-100 border-slate-300 hover:bg-slate-200 text-[#102F45]"
-            }`}
-          >
-            {isAddAddressVisible
-              ? "Ocultar sección dirección de mail"
-              : "Agregar/editar dirección de mail"}
-          </button>
-
-          {/* Agregar nueva dirección */}
-          {isAddAddressVisible && (
-            <div className="mt-2">
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  value={newAddress}
-                  onChange={(e) => setNewAddress(e.target.value)}
-                  placeholder="example@domain.com"
-                  className={`flex-grow p-2 rounded-lg border ${inputClass}`}
-                />
-                <button
-                  type="button"
-                  onClick={addAddress}
-                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
-                >
-                  +
-                </button>
-              </div>
-
-              {/* Lista de direcciones disponibles */}
-              {availableAddresses.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="font-bold mb-1.5">Direcciones disponibles:</h4>
-                  <ul className="space-y-1.5">
-                    {availableAddresses.map((address, index) => (
-                      <li
-                        key={index}
-                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs ${
-                          isDark
-                            ? "bg-slate-800 border-slate-700"
-                            : "bg-slate-50 border-slate-200"
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{tab.label}</span>
+                    {tab.badge !== null && (
+                      <span
+                        className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          isActive
+                            ? "bg-[#0879CB] text-white"
+                            : isDark
+                              ? "bg-slate-800 text-slate-300"
+                              : "bg-slate-200 text-[#102F45]"
                         }`}
                       >
-                        <span className="truncate">{address}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeAddress(address)}
-                          className="ml-2 text-white bg-red-600 hover:bg-red-700 rounded-full flex justify-center items-center w-5 h-5 shrink-0"
-                        >
-                          ×
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="p-4 sm:p-5">
+              {activeTab === "editor" && (
+                <EditorPanel
+                  theme={theme}
+                  severity={severity}
+                  setSeverity={setSeverity}
+                  title={title}
+                  setTitle={setTitle}
+                  reason={reason}
+                  setReason={setReason}
+                  impact={impact}
+                  setImpact={setImpact}
+                  instructions={instructions}
+                  setInstructions={setInstructions}
+                  customSections={customSections}
+                  onAddCustomSection={addCustomSection}
+                  onRemoveCustomSection={removeCustomSection}
+                  onCustomSectionChange={handleCustomSectionChange}
+                  showPersistentIssueSection={showPersistentIssueSection}
+                  setShowPersistentIssueSection={setShowPersistentIssueSection}
+                  onReset={resetTemplate}
+                />
+              )}
+
+              {activeTab === "send" && (
+                <SendPanel
+                  theme={theme}
+                  emailSubject={emailSubject}
+                  setEmailSubject={setEmailSubject}
+                  availableAddresses={availableAddresses}
+                  recipients={recipients}
+                  onToggleRecipient={toggleRecipient}
+                  onSelectAllRecipients={selectAllRecipients}
+                  onClearRecipients={clearRecipients}
+                  onRemoveRecipient={removeRecipient}
+                  newAddress={newAddress}
+                  setNewAddress={setNewAddress}
+                  onAddAddress={addAddress}
+                  onDeleteAvailableAddress={removeAddress}
+                  isLoading={isLoading}
+                  isMessageSent={isMessageSent}
+                  onRequestSend={requestSendEmail}
+                />
+              )}
+
+              {activeTab === "templates" && (
+                <TemplatesPanel
+                  theme={theme}
+                  templates={templates}
+                  onSelect={loadTemplate}
+                  onDelete={deleteTemplate}
+                  onPreview={setHoveredTemplate}
+                  pinnedPreviewId={pinnedTemplate?.id || null}
+                  onTogglePinPreview={togglePinPreview}
+                />
               )}
             </div>
-          )}
+          </section>
 
-          {isLoading && (
-            <div className="flex items-center gap-3 py-2">
-              <div className="relative flex items-center justify-center w-12 h-12">
-                <div className="absolute inset-0 rounded-full border-2 border-[#0879CB]/25 border-t-[#0879CB] animate-spin" />
-                <BrandLogo size={36} />
+          {/* Columna derecha: Barra de acciones + Vista previa en tiempo real */}
+          <section className="lg:col-span-7 xl:col-span-8 space-y-4">
+            {/* Barra de acciones */}
+            <div
+              className={`rounded-2xl border p-3 sm:px-4 flex flex-wrap items-center justify-between gap-2.5 shadow-sm transition-colors ${
+                isDark
+                  ? "bg-slate-900 border-slate-800"
+                  : "bg-white border-slate-200"
+              }`}
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wider opacity-70">
+                  Vista previa del correo
+                </p>
               </div>
-              <span className="text-xs font-medium opacity-80">
-                Enviando comunicado...
-              </span>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={copyHtmlToClipboard}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    isDark
+                      ? "border-slate-700 bg-slate-950/60 text-slate-200 hover:bg-slate-800"
+                      : "border-slate-300 bg-slate-50 text-[#102F45] hover:bg-slate-100"
+                  }`}
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  Copiar HTML
+                </button>
+
+                <button
+                  type="button"
+                  onClick={saveTemplate}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    isDark
+                      ? "border-slate-700 bg-slate-950/60 text-slate-200 hover:bg-slate-800"
+                      : "border-slate-300 bg-slate-50 text-[#102F45] hover:bg-slate-100"
+                  }`}
+                >
+                  <BookmarkPlus className="w-3.5 h-3.5 text-[#0879CB]" />
+                  Guardar plantilla
+                </button>
+
+                <button
+                  type="button"
+                  onClick={requestSendEmail}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#0879CB] hover:bg-[#0667AE] text-white transition-colors shadow-sm"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  Enviar ({recipients.length})
+                </button>
+              </div>
             </div>
-          )}
-          {isMessageSent && (
-            <p className="text-emerald-500 font-semibold mt-2">
-              Mensaje enviado exitosamente.
-            </p>
-          )}
 
-          {/* Botón para enviar comunicado */}
-          <button
-            type="button"
-            disabled={isLoading}
-            onClick={enviarCorreo}
-            className="w-full py-2.5 bg-[#0879CB] hover:bg-[#0667AE] disabled:opacity-60 text-white font-semibold rounded-lg transition-colors"
-          >
-            Enviar Comunicado
-          </button>
+            {/* Simulador de cabecera de cliente de correo + cuerpo HTML */}
+            <div
+              className={`rounded-2xl border overflow-hidden shadow-xl transition-colors ${
+                activePreviewTemplate
+                  ? "border-[#0879CB] ring-2 ring-[#0879CB]/30"
+                  : isDark
+                    ? "border-slate-800"
+                    : "border-slate-200"
+              }`}
+            >
+              {activePreviewTemplate && (
+                <div className="px-4 sm:px-6 py-2.5 bg-[#0879CB] text-white flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Eye className="w-4 h-4 shrink-0" />
+                    <span className="truncate font-semibold">
+                      Vista preliminar: {activePreviewTemplate.state?.title || "Sin título"}
+                    </span>
+                    <span className="hidden sm:inline opacity-85">
+                      (tu borrador actual no se modificó)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => loadTemplate(activePreviewTemplate)}
+                      className="px-2.5 py-1 rounded bg-white text-[#0879CB] font-semibold hover:bg-sky-50 transition-colors"
+                    >
+                      Cargar
+                    </button>
+                    {pinnedTemplate && (
+                      <button
+                        type="button"
+                        onClick={() => setPinnedTemplate(null)}
+                        aria-label="Cerrar vista preliminar"
+                        className="p-1 rounded hover:bg-white/20 transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div
+                className={`px-4 sm:px-6 py-3 border-b text-xs space-y-1 ${
+                  isDark
+                    ? "bg-slate-900/95 border-slate-800 text-slate-300"
+                    : "bg-slate-50 border-slate-200 text-[#536F83]"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold w-14 shrink-0">Asunto:</span>
+                  <span
+                    className={`font-medium truncate ${
+                      isDark ? "text-slate-100" : "text-[#102F45]"
+                    }`}
+                  >
+                    {emailSubject || "(Sin asunto)"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold w-14 shrink-0">Para:</span>
+                  {recipients.length > 0 ? (
+                    <span className="inline-flex items-center gap-1.5 truncate">
+                      <Mail className="w-3.5 h-3.5 text-[#0879CB] shrink-0" />
+                      <span className="truncate">
+                        {recipients.slice(0, 3).join(", ")}
+                        {recipients.length > 3
+                          ? ` y ${recipients.length - 3} más`
+                          : ""}
+                      </span>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("send")}
+                      className="text-[#0879CB] hover:underline"
+                    >
+                      Sin destinatarios — Configurar envío
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white text-[#333] p-4 sm:p-6 flex justify-center">
+                {activePreviewTemplate && (
+                  <div className="w-full max-w-2xl">
+                    <NotificationTemplate
+                      title={activePreviewTemplate.state?.title || ""}
+                      severity={activePreviewTemplate.state?.severity || "low"}
+                      reason={activePreviewTemplate.state?.reason || ""}
+                      impact={activePreviewTemplate.state?.impact || ""}
+                      instructions={(
+                        activePreviewTemplate.state?.instructions || []
+                      ).filter((inst) => inst.trim() !== "")}
+                      customSections={
+                        activePreviewTemplate.state?.customSections || []
+                      }
+                      showPersistentIssueSection={Boolean(
+                        activePreviewTemplate.state?.showPersistentIssueSection
+                      )}
+                    />
+                  </div>
+                )}
+                <div
+                  ref={templateRef}
+                  className={
+                    activePreviewTemplate ? "hidden" : "w-full max-w-2xl"
+                  }
+                >
+                  <NotificationTemplate
+                    title={title}
+                    severity={severity}
+                    reason={reason}
+                    impact={impact}
+                    instructions={cleanInstructions}
+                    customSections={customSections}
+                    showPersistentIssueSection={showPersistentIssueSection}
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
-      </div>
-
-      {/* Contenido principal */}
-      <main
-        className="flex-1 flex flex-col items-center justify-center max-w-full w-full mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-10"
-        style={{
-          paddingLeft: isSendFormVisible ? "20px" : undefined,
-          paddingRight: isFormVisible ? "20px" : undefined,
-          transition: "padding 0.3s ease",
-        }}
-      >
-        <div
-          ref={templateRef}
-          className="px-5 sm:px-8 py-6 max-w-md md:max-w-lg lg:max-w-3xl w-full bg-white text-[#333] rounded-xl shadow-lg mt-4 mb-8"
-        >
-          <NotificationTemplate
-            title={title}
-            severity={severity}
-            reason={reason}
-            impact={impact}
-            instructions={instructions}
-            customSections={customSections}
-            showPersistentIssueSection={showPersistentIssueSection}
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={saveTemplate}
-          className="px-5 py-2.5 bg-[#0879CB] hover:bg-[#0667AE] rounded-lg text-white font-medium shadow-sm transition-colors"
-        >
-          Guardar Template
-        </button>
-
-        {templates && templates.length > 0 ? (
-          <TemplateCarousel
-            className="w-full max-w-full overflow-hidden"
-            templates={templates}
-            onTemplateSelect={loadTemplate}
-            onDelete={deleteTemplate}
-            theme={theme}
-          />
-        ) : (
-          <div
-            className={`mt-5 text-center text-sm ${
-              isDark ? "text-slate-400" : "text-[#536F83]"
-            }`}
-          >
-            Aún no tienes plantillas guardadas.
-          </div>
-        )}
       </main>
+
+      <ConfirmSendModal
+        isOpen={isConfirmModalOpen}
+        theme={theme}
+        emailSubject={emailSubject}
+        recipients={recipients}
+        isLoading={isLoading}
+        onCancel={() => setIsConfirmModalOpen(false)}
+        onConfirm={enviarCorreo}
+      />
 
       <Footer
         text={`© ${new Date().getFullYear()} Distrinando S.A. · Sistemas`}
@@ -675,291 +685,3 @@ const App = ({ onLogout, currentUser, theme = "dark", onToggleTheme }) => {
 };
 
 export default App;
-
-// Referencia para copiar solo la plantilla sin el formulario
-// const copiaralclipboard = async () => {
-//   if (templateRef.current) {
-//     const htmlContent = templateRef.current.innerHTML;
-//     console.log(htmlContent);
-
-//     try {
-//       const item = new clipboard.ClipboardItem({
-//         "text/html": new Blob([htmlContent], { type: "text/html" }),
-//       });
-//       await clipboard.write([item]);
-//       alert(
-//         "HTML copiado al portapapeles. Puedes pegarlo en tu cliente de correo."
-//       );
-//     } catch (err) {
-//       console.error("Error al copiar HTML al portapapeles:", err);
-//       alert("No se pudo copiar el HTML al portapapeles.");
-//     }
-//   }
-// };
-
-// const copyHtmlToClipboard = async () => {
-//   if (templateRef.current) {
-//     // Obtén el HTML del componente, pero excluyendo el formulario de edición
-//     const htmlContent = templateRef.current.innerHTML;
-//     console.log(htmlContent);
-//     // Usa la API de Clipboard con MIME tipo `text/html`
-//     try {
-//       await navigator.clipboard.write([
-//         new ClipboardItem({
-//           "text/html": new Blob([htmlContent], { type: "text/html" }),
-//         }),
-//       ]);
-//       alert(
-//         "HTML copiado al portapapeles. Puedes pegarlo en tu cliente de correo."
-//       );
-//     } catch (err) {
-//       console.error("Error al copiar HTML al portapapeles:", err);
-//       alert("No se pudo copiar el HTML al portapapeles.");
-//     }
-//   }
-// };
-//   return (
-//     <div style={{ display: "flex", padding: "20px" }}>
-//       {/* Botón para desplegar u ocultar el formulario de edición */}
-//       <button
-//         onClick={() => setIsFormVisible(!isFormVisible)}
-//         style={{
-//           padding: "10px 15px",
-//           backgroundColor: "#28a745",
-//           color: "white",
-//           border: "none",
-//           borderRadius: "5px",
-//           marginBottom: "20px",
-//           cursor: "pointer",
-//         }}
-//       >
-//         {isFormVisible ? "Ocultar Formulario" : "Editar Plantilla"}
-//       </button>
-
-//       {/* Formulario de edición de la plantilla */}
-//       {isFormVisible && (
-//         <div
-//           style={{
-//             marginBottom: "20px",
-//             background: "#f4f4f4",
-//             padding: "15px",
-//             borderRadius: "8px",
-//           }}
-//         >
-//           <label style={{ display: "block", marginBottom: "10px" }}>
-//             Nivel de severidad:
-//             <select
-//               value={severity}
-//               onChange={(e) => setSeverity(e.target.value)}
-//               style={{
-//                 padding: "8px",
-//                 width: "100%",
-//                 borderRadius: "5px",
-//                 marginTop: "5px",
-//               }}
-//             >
-//               <option value="high">Alta</option>
-//               <option value="medium">Media</option>
-//               <option value="low">Baja</option>
-//               <option value="announcement">Anuncio</option>
-//             </select>
-//           </label>
-
-//           <label style={{ display: "block", marginBottom: "10px" }}>
-//             Titulo:
-//             <textarea
-//               value={title}
-//               onChange={(e) => setTitle(e.target.value)}
-//               style={{
-//                 width: "100%",
-//                 height: "80px",
-//                 padding: "8px",
-//                 borderRadius: "5px",
-//               }}
-//             />
-//           </label>
-
-//           <label style={{ display: "block", marginBottom: "10px" }}>
-//             Motivo:
-//             <textarea
-//               value={reason}
-//               onChange={(e) => setReason(e.target.value)}
-//               style={{
-//                 width: "100%",
-//                 height: "80px",
-//                 padding: "8px",
-//                 borderRadius: "5px",
-//               }}
-//             />
-//           </label>
-
-//           <label style={{ display: "block", marginBottom: "10px" }}>
-//             Impacto:
-//             <textarea
-//               value={impact}
-//               onChange={(e) => setImpact(e.target.value)}
-//               style={{
-//                 width: "100%",
-//                 height: "80px",
-//                 padding: "8px",
-//                 borderRadius: "5px",
-//               }}
-//             />
-//           </label>
-
-//           <label style={{ display: "block", marginBottom: "10px" }}>
-//             Instrucciones:
-//             <textarea
-//               value={instructions.join("\n")}
-//               onChange={(e) => {
-//                 const newInstructions = e.target.value
-//                   .split("\n")
-//                   .filter((instruction) => instruction.trim() !== "");
-//                 setInstructions(
-//                   newInstructions.length > 0 ? newInstructions : []
-//                 );
-//               }}
-//               style={{
-//                 width: "100%",
-//                 height: "100px",
-//                 padding: "8px",
-//                 borderRadius: "5px",
-//               }}
-//             />
-//           </label>
-
-//           <label style={{ display: "block", marginBottom: "10px" }}>
-//             <input
-//               type="checkbox"
-//               checked={showPersistentIssueSection}
-//               onChange={(e) => setShowPersistentIssueSection(e.target.checked)}
-//             />
-//             Mostrar sección "Si el problema persiste"
-//           </label>
-//           {/* Secciones personalizadas */}
-//           <h3>Secciones Personalizadas</h3>
-//           {customSections.map((section, index) => (
-//             <div key={index} style={{ marginBottom: "10px" }}>
-//               <input
-//                 type="text"
-//                 placeholder="Título de la sección"
-//                 value={section.title}
-//                 onChange={(e) => handleCustomSectionChange(index, "title", e.target.value)}
-//                 style={{ width: "100%", marginBottom: "5px" }}
-//               />
-//               <textarea
-//                 placeholder="Contenido de la sección"
-//                 value={section.content}
-//                 onChange={(e) => handleCustomSectionChange(index, "content", e.target.value)}
-//                 style={{ width: "100%", height: "60px", marginBottom: "5px" }}
-//               />
-//               <button onClick={() => removeCustomSection(index)}>Eliminar Sección</button>
-//             </div>
-//           ))}
-//           <button onClick={addCustomSection}>Agregar Sección</button>
-//         </div>
-
-//       )}
-
-//       {/* Plantilla editable */}
-//       <div ref={templateRef}>
-//         <NotificationTemplate
-//           title={title}
-//           severity={severity}
-//           reason={reason}
-//           impact={impact}
-//           instructions={instructions}
-//           customSections={customSections}
-//           showPersistentIssueSection={showPersistentIssueSection}
-//         />
-//       </div>
-//       {/* Botón para copiar el HTML */}
-//       <button onClick={copiaralclipboard}
-//        style={{
-//         padding: "10px 20px",
-//         backgroundColor: "#007bff",
-//         marginRight: "6px",
-//         color: "white",
-//         border: "none",
-//         borderRadius: "5px",
-//         cursor: "pointer",
-//       }}
-//       > Copiar HTML(otra api)</button>
-//       <button
-//         onClick={copyHtmlToClipboard}
-//         style={{
-//           padding: "10px 20px",
-//           backgroundColor: "#007bff",
-//           color: "white",
-//           border: "none",
-//           borderRadius: "5px",
-//           cursor: "pointer",
-//         }}
-//       >
-//         Copiar HTML al Portapapeles
-//       </button>
-
-//     </div>
-//   );
-// };
-
-// import React, { useRef } from "react";
-// import NotificationTemplate from "./NotificationTemplate";
-
-// const App = () => {
-//   const templateRef = useRef(null);
-
-//   const copyHtmlToClipboard = async () => {
-//     if (templateRef.current) {
-//       // Obtén el HTML del componente
-//       const htmlContent = templateRef.current.innerHTML;
-
-//       // Usa la API de Clipboard con MIME tipo `text/html`
-//       try {
-//         await navigator.clipboard.write([
-//           new ClipboardItem({
-//             "text/html": new Blob([htmlContent], { type: "text/html" }),
-//           }),
-//         ]);
-//         alert("HTML copiado al portapapeles. Puedes pegarlo en tu cliente de correo.");
-//       } catch (err) {
-//         console.error("Error al copiar HTML al portapapeles:", err);
-//         alert("No se pudo copiar el HTML al portapapeles.");
-//       }
-//     }
-//   };
-
-//   return (
-//     <div>
-//       {/* Ejemplo de Mantenimiento Urgente */}
-//       <div ref={templateRef}>
-//         <NotificationTemplate
-//           severity="high"
-//           reason="Debido a un mantenimiento urgente en SAP (espacio de almacenamiento lleno), se ha decidido apagar temporalmente uno de los servidores."
-//           impact="Algunos usuarios podrían experimentar desconexiones y problemas de acceso."
-//           instructions={[
-//             "Abrir 'Conexión a Escritorio Remoto' desde el menú de inicio de Windows.",
-//             "Conectar usando 10.0.0.76 o 10.0.0.3, los servidores restantes.",
-//           ]}
-//         />
-//       </div>
-
-//       {/* Botón para copiar el HTML */}
-//       <button
-//         onClick={copyHtmlToClipboard}
-//         style={{
-//           marginTop: "20px",
-//           padding: "10px 20px",
-//           backgroundColor: "#007bff",
-//           color: "white",
-//           border: "none",
-//           borderRadius: "5px",
-//         }}
-//       >
-//         Copiar HTML al Portapapeles
-//       </button>
-//     </div>
-//   );
-// };
-
-// export default App;

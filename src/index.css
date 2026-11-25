@@ -2,3 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes border-beam-spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+.animate-border-beam {
+  animation: border-beam-spin 6s linear infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.65;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.animate-pulse-ring-delayed {
+  animation: pulse-ring 2.8s cubic-bezier(0.22, 1, 0.36, 1) 1.4s infinite;
+}
+
+@keyframes subtle-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-subtle-shake {
+  animation: subtle-shake 0.36s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-border-beam,
+  .animate-pulse-ring,
+  .animate-pulse-ring-delayed,
+  .animate-subtle-shake {
+    animation: none;
+  }
+}
+
