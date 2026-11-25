@@ -16,8 +16,8 @@ const userCredentials = {
   admin: process.env.REACT_APP_ADMIN,
   Mauricio: process.env.REACT_APP_MAURICIO,
   Matias: process.env.REACT_APP_MATIAS,
-  Octavio: process.env.REACT_APP_OCTAVIO,
-  Guillermo: process.env.REACT_APP_GUILLERMO,
+  Juan: process.env.REACT_APP_JUAN,
+  Facu: process.env.REACT_APP_FACU,
 };
 
 function Login({ onLogin, theme = "dark", onToggleTheme }) {
